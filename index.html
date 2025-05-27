@@ -6,6 +6,19 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>HPE Audit Portal</title>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" />
+    <script src="/diagnostic.js"></script>
+    <script>
+      // Simple debug script to check if the application is loading
+      window.addEventListener('DOMContentLoaded', function() {
+        console.log('DOM fully loaded');
+        setTimeout(function() {
+          if (document.body.innerHTML.trim() === '<div id="root"></div>') {
+            console.log('Application did not render after 5 seconds');
+            document.body.innerHTML = '<div style="padding: 20px; font-family: Arial, sans-serif;"><h1>HPE Audit Portal</h1><p>Application is loading...</p><p>If you continue to see this message, there may be a problem with the application. Try refreshing the page.</p><button onclick="window.location.reload()">Refresh Page</button></div>';
+          }
+        }, 5000);
+      });
+    </script>
   </head>
   <body>
     <div id="root">
