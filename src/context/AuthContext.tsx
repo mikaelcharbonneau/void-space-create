@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
 import type { User } from '@supabase/supabase-js';
 
@@ -18,6 +18,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     // Check active session
@@ -34,10 +35,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setIsAuthenticated(!!session);
       setUser(session?.user ?? null);
       setLoading(false);
+
+      // Redirect to login if not authenticated
+      if (!session && location.pathname !== '/login') {
+        navigate('/login', { replace: true });
+      }
     });
 
     return () => subscription.unsubscribe();
-  }, []);
+  }, [navigate, location]);
 
   const login = async (email: string, password: string): Promise<boolean> => {
     try {
@@ -64,7 +70,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const logout = async () => {
     try {
       await supabase.auth.signOut();
-      navigate('/login');
     } catch (error) {
       console.error('Error during logout:', error);
     }
