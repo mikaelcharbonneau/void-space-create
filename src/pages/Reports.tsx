@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Search, Filter, FileDown, Calendar, Plus } from 'lucide-react';
 import { format } from 'date-fns';
 import { supabase } from '../lib/supabaseClient';
+import { useAuth } from '../context/AuthContext';
 
 interface Report {
   id: string;
@@ -17,6 +18,7 @@ interface Report {
 
 const Reports = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -39,6 +41,10 @@ const Reports = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleCreateReport = () => {
+    navigate('/reports/new');
   };
 
   const getStatusColor = (status: string) => {
@@ -75,8 +81,8 @@ const Reports = () => {
           <p className="text-gray-600">View and manage your reports</p>
         </div>
         <button
-          onClick={() => navigate('/reports/new')}
-          className="bg-emerald-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-emerald-600"
+          onClick={handleCreateReport}
+          className="bg-emerald-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-emerald-600 transition-colors"
         >
           <Plus className="w-5 h-5" />
           Create Report
@@ -115,8 +121,8 @@ const Reports = () => {
             Create your first report to get started
           </p>
           <button
-            onClick={() => navigate('/reports/new')}
-            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-emerald-500 hover:bg-emerald-600"
+            onClick={handleCreateReport}
+            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-emerald-500 hover:bg-emerald-600 transition-colors"
           >
             <Plus className="w-5 h-5 mr-2" />
             Create Report

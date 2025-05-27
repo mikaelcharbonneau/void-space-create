@@ -11,6 +11,7 @@ import InspectionForm from './pages/InspectionForm';
 import Incidents from './pages/Incidents';
 import Confirmation from './pages/Confirmation';
 import Reports from './pages/Reports';
+import ReportForm from './pages/ReportForm';
 import Profile from './pages/Profile';
 import Login from './pages/Login';
 import NotFound from './pages/NotFound';
@@ -38,6 +39,7 @@ const App = () => {
                     <Route path="incidents" element={<Incidents />} />
                     <Route path="confirmation" element={<Confirmation />} />
                     <Route path="reports" element={<Reports />} />
+                    <Route path="reports/new" element={<ReportForm />} />
                     <Route path="reports/:id" element={<Reports />} />
                     <Route path="profile" element={<Profile />} />
                     <Route path="not-found" element={<NotFound />} />
