@@ -16,12 +16,25 @@ interface Report {
   data: any;
 }
 
+interface FilterOptions {
+  severity: string;
+  location: string;
+  dateRange: string;
+  issueType: string[];
+}
+
 const Reports = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [generating, setGenerating] = useState(false);
+  const [filters, setFilters] = useState<FilterOptions>({
+    severity: '',
+    location: '',
+    dateRange: '7days',
+    issueType: []
+  });
 
   useEffect(() => {
     fetchReports();
@@ -43,33 +56,49 @@ const Reports = () => {
     }
   };
 
-  const handleCreateReport = () => {
-    navigate('/reports/new');
+  const handleFilterChange = (key: keyof FilterOptions, value: string | string[]) => {
+    setFilters(prev => ({ ...prev, [key]: value }));
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'published':
-        return 'bg-emerald-100 text-emerald-800';
-      case 'draft':
-        return 'bg-amber-100 text-amber-800';
-      case 'archived':
-        return 'bg-gray-100 text-gray-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-  };
+  const handleGenerateReport = async () => {
+    setGenerating(true);
+    try {
+      // Fetch issues based on filters
+      const { data: issues, error: issuesError } = await supabase
+        .from('incidents')
+        .select('*')
+        .match(filters.severity ? { severity: filters.severity } : {})
+        .match(filters.location ? { location: filters.location } : {});
 
-  const getTypeIcon = (type: string) => {
-    switch (type) {
-      case 'inspection':
-        return '🔍';
-      case 'incident':
-        return '⚠️';
-      case 'maintenance':
-        return '🔧';
-      default:
-        return '📄';
+      if (issuesError) throw issuesError;
+
+      // Create report with filtered issues
+      const { data: report, error: reportError } = await supabase
+        .from('reports')
+        .insert([{
+          title: `Issue Report - ${format(new Date(), 'MMM d, yyyy')}`,
+          description: `Generated report containing ${issues?.length || 0} issues`,
+          type: 'inspection',
+          status: 'published',
+          location: filters.location || 'All Locations',
+          user_id: user?.id,
+          data: {
+            filters,
+            issues,
+            generated_at: new Date().toISOString()
+          }
+        }])
+        .select()
+        .single();
+
+      if (reportError) throw reportError;
+
+      // Navigate to the new report
+      navigate(`/reports/${report.id}`);
+    } catch (error) {
+      console.error('Error generating report:', error);
+    } finally {
+      setGenerating(false);
     }
   };
 
@@ -78,57 +107,101 @@ const Reports = () => {
       <div className="flex justify-between items-center mb-8">
         <div>
           <h1 className="text-2xl font-semibold mb-2">Reports</h1>
-          <p className="text-gray-600">View and manage your reports</p>
+          <p className="text-gray-600">Generate and view issue reports</p>
         </div>
-        <button
-          onClick={handleCreateReport}
-          className="bg-emerald-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-emerald-600 transition-colors"
-        >
-          <Plus className="w-5 h-5" />
-          Create Report
-        </button>
       </div>
 
-      <div className="flex gap-4 mb-8">
-        <div className="flex-1 relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-          <input
-            type="text"
-            placeholder="Search reports..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg"
-          />
-        </div>
-        <button className="border border-gray-200 rounded-lg px-4 py-2 flex items-center gap-2 hover:bg-gray-50">
-          <Filter className="w-5 h-5" />
-          Filters
-        </button>
-      </div>
-
-      {loading ? (
-        <div className="text-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading reports...</p>
-        </div>
-      ) : reports.length === 0 ? (
-        <div className="text-center py-12 bg-white rounded-lg shadow-sm">
-          <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <FileDown className="w-8 h-8 text-gray-400" />
+      {/* Filters Section */}
+      <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
+        <h2 className="text-lg font-medium mb-4">Report Filters</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Severity
+            </label>
+            <select
+              value={filters.severity}
+              onChange={(e) => handleFilterChange('severity', e.target.value)}
+              className="w-full border border-gray-300 rounded-md p-2"
+            >
+              <option value="">All Severities</option>
+              <option value="low">Low</option>
+              <option value="medium">Medium</option>
+              <option value="high">High</option>
+              <option value="critical">Critical</option>
+            </select>
           </div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No Reports Yet</h3>
-          <p className="text-gray-600 mb-6">
-            Create your first report to get started
-          </p>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Location
+            </label>
+            <select
+              value={filters.location}
+              onChange={(e) => handleFilterChange('location', e.target.value)}
+              className="w-full border border-gray-300 rounded-md p-2"
+            >
+              <option value="">All Locations</option>
+              <option value="data-center-a">Data Center A</option>
+              <option value="data-center-b">Data Center B</option>
+              <option value="data-center-c">Data Center C</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Date Range
+            </label>
+            <select
+              value={filters.dateRange}
+              onChange={(e) => handleFilterChange('dateRange', e.target.value)}
+              className="w-full border border-gray-300 rounded-md p-2"
+            >
+              <option value="7days">Last 7 Days</option>
+              <option value="30days">Last 30 Days</option>
+              <option value="90days">Last 90 Days</option>
+              <option value="all">All Time</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Issue Types
+            </label>
+            <div className="space-y-2">
+              {['Hardware', 'Software', 'Network', 'Power'].map(type => (
+                <label key={type} className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={filters.issueType.includes(type)}
+                    onChange={(e) => {
+                      const newTypes = e.target.checked
+                        ? [...filters.issueType, type]
+                        : filters.issueType.filter(t => t !== type);
+                      handleFilterChange('issueType', newTypes);
+                    }}
+                    className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+                  />
+                  <span className="ml-2 text-sm text-gray-600">{type}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-6 flex justify-end">
           <button
-            onClick={handleCreateReport}
-            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-emerald-500 hover:bg-emerald-600 transition-colors"
+            onClick={handleGenerateReport}
+            disabled={generating}
+            className="bg-emerald-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-emerald-600 transition-colors disabled:opacity-50"
           >
-            <Plus className="w-5 h-5 mr-2" />
-            Create Report
+            {generating ? 'Generating...' : 'Generate Report'}
           </button>
         </div>
-      ) : (
+      </div>
+
+      {/* Generated Reports List */}
+      {reports.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {reports.map((report) => (
             <div
@@ -138,16 +211,15 @@ const Reports = () => {
             >
               <div className="p-6">
                 <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-center">
-                    <span className="text-2xl mr-3">{getTypeIcon(report.type)}</span>
-                    <div>
-                      <h3 className="text-lg font-medium text-gray-900 mb-1">
-                        {report.title}
-                      </h3>
-                      <p className="text-sm text-gray-600">{report.location}</p>
-                    </div>
+                  <div>
+                    <h3 className="text-lg font-medium text-gray-900 mb-1">
+                      {report.title}
+                    </h3>
+                    <p className="text-sm text-gray-600">{report.location}</p>
                   </div>
-                  <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${getStatusColor(report.status)}`}>
+                  <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
+                    report.status === 'published' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                  }`}>
                     {report.status.charAt(0).toUpperCase() + report.status.slice(1)}
                   </span>
                 </div>
