@@ -13,6 +13,7 @@ export default defineConfig({
     hmr: {
       timeout: 120000,
       host: 'localhost',
+      protocol: 'ws',
       clientPort: 443
     },
     proxy: {
@@ -20,6 +21,7 @@ export default defineConfig({
         target: 'http://localhost:3001',
         changeOrigin: true,
         secure: false,
+        ws: true,
         rewrite: (path) => path.replace(/^\/api/, '')
       },
       '/rest/v1': {
