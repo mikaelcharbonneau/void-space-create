@@ -4,9 +4,6 @@ import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import './index.css';
 
-// Debug environment variables loading
-console.log('Environment loading check - ENV PREFIX:', import.meta.env.MODE);
-
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <BrowserRouter>
