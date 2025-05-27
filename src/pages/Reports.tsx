@@ -80,69 +80,43 @@ const Reports = () => {
     try {
       setGeneratingReport(true);
 
-      // Fetch filtered data based on selected criteria
-      let query = supabase
+      // Get the latest walkthrough ID
+      const { data: latestReport } = await supabase
         .from('AuditReports')
-        .select('*')
-        .order('Timestamp', { ascending: false });
+        .select('walkthrough_id')
+        .order('walkthrough_id', { ascending: false })
+        .limit(1)
+        .single();
 
-      if (dateRange[0] && dateRange[1]) {
-        query = query
-          .gte('Timestamp', dateRange[0].toISOString())
-          .lte('Timestamp', dateRange[1].toISOString());
-      }
+      const nextWalkthroughId = (latestReport?.walkthrough_id || 0) + 1;
 
-      if (selectedDatacenter) {
-        query = query.eq('datacenter', selectedDatacenter);
-      }
-
-      if (selectedDatahall) {
-        query = query.eq('datahall', selectedDatahall);
-      }
-
-      if (selectedStatus) {
-        query = query.eq('state', selectedStatus);
-      }
-
-      const { data, error } = await query;
+      // Insert new report into AuditReports
+      const { data, error } = await supabase
+        .from('AuditReports')
+        .insert([{
+          UserEmail: user?.email,
+          user_full_name: user?.user_metadata?.full_name || user?.email,
+          datacenter: selectedDatacenter || 'All Locations',
+          datahall: selectedDatahall || 'All Data Halls',
+          state: selectedStatus || 'Healthy',
+          issues_reported: 0,
+          walkthrough_id: nextWalkthroughId,
+          ReportData: {
+            date_range: {
+              start: dateRange[0]?.toISOString(),
+              end: dateRange[1]?.toISOString()
+            },
+            generated_at: new Date().toISOString(),
+            generated_by: user?.email
+          }
+        }])
+        .select()
+        .single();
 
       if (error) throw error;
 
-      // Generate report data
-      const reportData = {
-        generated_at: new Date().toISOString(),
-        generated_by: user?.email,
-        filters: {
-          date_range: {
-            start: dateRange[0]?.toISOString(),
-            end: dateRange[1]?.toISOString()
-          },
-          datacenter: selectedDatacenter || 'All',
-          datahall: selectedDatahall || 'All',
-          status: selectedStatus || 'All'
-        },
-        summary: {
-          total_inspections: data?.length || 0,
-          total_issues: data?.reduce((sum, report) => sum + report.issues_reported, 0) || 0,
-          by_state: {
-            healthy: data?.filter(r => r.state === 'Healthy').length || 0,
-            warning: data?.filter(r => r.state === 'Warning').length || 0,
-            critical: data?.filter(r => r.state === 'Critical').length || 0
-          }
-        },
-        inspections: data || []
-      };
-
-      // Download the report as JSON
-      const blob = new Blob([JSON.stringify(reportData, null, 2)], { type: 'application/json' });
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `inspection-report-${format(new Date(), 'yyyy-MM-dd')}.json`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
+      // Navigate to the new report
+      navigate(`/reports/${data.Id}`);
     } catch (error) {
       console.error('Error generating report:', error);
     } finally {
@@ -189,7 +163,7 @@ const Reports = () => {
             className="bg-emerald-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-emerald-600 transition-colors disabled:opacity-50"
           >
             <FileDown className="w-5 h-5" />
-            {generatingReport ? 'Generating...' : 'Generate Report'}
+            {generatingReport ? 'Generating...' : 'Start Walkthrough'}
           </button>
           <button
             onClick={handleCreateReport}
@@ -202,7 +176,7 @@ const Reports = () => {
       </div>
 
       <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
-        <h2 className="text-lg font-medium mb-4">Report Generation Filters</h2>
+        <h2 className="text-lg font-medium mb-4">Walkthrough Filters</h2>
         <div className="flex flex-wrap gap-4 mb-6">
           <div className="flex-1 min-w-[200px]">
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -310,14 +284,14 @@ const Reports = () => {
           </div>
           <h3 className="text-lg font-medium text-gray-900 mb-2">No Reports Found</h3>
           <p className="text-gray-600 mb-6">
-            Try adjusting your search or create a new report
+            Try adjusting your search or start a new walkthrough
           </p>
           <button
-            onClick={handleCreateReport}
+            onClick={handleGenerateReport}
             className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-emerald-500 hover:bg-emerald-600 transition-colors"
           >
             <Plus className="w-5 h-5 mr-2" />
-            Create Report
+            Start Walkthrough
           </button>
         </div>
       ) : (
