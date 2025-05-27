@@ -26,7 +26,6 @@ const Reports = () => {
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [showFilters, setShowFilters] = useState(false);
   const [dateRange, setDateRange] = useState<[Date | null, Date | null]>([
     new Date(new Date().setDate(new Date().getDate() - new Date().getDay())), // Start of current week
     new Date(new Date().setDate(new Date().getDate() - new Date().getDay() + 6)) // End of current week
@@ -34,6 +33,7 @@ const Reports = () => {
   const [selectedDatacenter, setSelectedDatacenter] = useState('');
   const [selectedDatahall, setSelectedDatahall] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('');
+  const [generatingReport, setGeneratingReport] = useState(false);
 
   const datacenters = [
     'Canada - Quebec',
@@ -53,19 +53,43 @@ const Reports = () => {
 
   useEffect(() => {
     fetchReports();
-  }, [dateRange, selectedDatacenter, selectedDatahall, selectedStatus]);
+  }, []);
 
   const fetchReports = async () => {
     try {
       setLoading(true);
+      const { data, error } = await supabase
+        .from('AuditReports')
+        .select('*')
+        .order('Timestamp', { ascending: false });
+
+      if (error) throw error;
+      setReports(data || []);
+    } catch (error) {
+      console.error('Error fetching reports:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreateReport = () => {
+    navigate('/reports/new');
+  };
+
+  const handleGenerateReport = async () => {
+    try {
+      setGeneratingReport(true);
+
+      // Fetch filtered data based on selected criteria
       let query = supabase
         .from('AuditReports')
         .select('*')
         .order('Timestamp', { ascending: false });
 
       if (dateRange[0] && dateRange[1]) {
-        query = query.gte('Timestamp', dateRange[0].toISOString())
-                    .lte('Timestamp', dateRange[1].toISOString());
+        query = query
+          .gte('Timestamp', dateRange[0].toISOString())
+          .lte('Timestamp', dateRange[1].toISOString());
       }
 
       if (selectedDatacenter) {
@@ -83,32 +107,38 @@ const Reports = () => {
       const { data, error } = await query;
 
       if (error) throw error;
-      setReports(data || []);
-    } catch (error) {
-      console.error('Error fetching reports:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
 
-  const handleCreateReport = () => {
-    navigate('/reports/new');
-  };
+      // Generate report data
+      const reportData = {
+        generated_at: new Date().toISOString(),
+        generated_by: user?.email,
+        filters: {
+          date_range: {
+            start: dateRange[0]?.toISOString(),
+            end: dateRange[1]?.toISOString()
+          },
+          datacenter: selectedDatacenter || 'All',
+          datahall: selectedDatahall || 'All',
+          status: selectedStatus || 'All'
+        },
+        summary: {
+          total_inspections: data?.length || 0,
+          total_issues: data?.reduce((sum, report) => sum + report.issues_reported, 0) || 0,
+          by_state: {
+            healthy: data?.filter(r => r.state === 'Healthy').length || 0,
+            warning: data?.filter(r => r.state === 'Warning').length || 0,
+            critical: data?.filter(r => r.state === 'Critical').length || 0
+          }
+        },
+        inspections: data || []
+      };
 
-  const handleGenerateReport = async () => {
-    try {
-      setLoading(true);
-      const filteredData = reports.filter(report => {
-        const matchesSearch = report.user_full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                            report.datacenter.toLowerCase().includes(searchTerm.toLowerCase());
-        return matchesSearch;
-      });
-
-      const blob = new Blob([JSON.stringify(filteredData, null, 2)], { type: 'application/json' });
+      // Download the report as JSON
+      const blob = new Blob([JSON.stringify(reportData, null, 2)], { type: 'application/json' });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `report-${format(new Date(), 'yyyy-MM-dd')}.json`;
+      a.download = `inspection-report-${format(new Date(), 'yyyy-MM-dd')}.json`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
@@ -116,7 +146,7 @@ const Reports = () => {
     } catch (error) {
       console.error('Error generating report:', error);
     } finally {
-      setLoading(false);
+      setGeneratingReport(false);
     }
   };
 
@@ -139,6 +169,12 @@ const Reports = () => {
     return '✅';
   };
 
+  const filteredReports = reports.filter(report =>
+    report.datacenter.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    report.datahall.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    report.user_full_name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   return (
     <div className="p-6">
       <div className="flex justify-between items-center mb-8">
@@ -149,11 +185,11 @@ const Reports = () => {
         <div className="flex gap-4">
           <button
             onClick={handleGenerateReport}
-            disabled={loading}
-            className="bg-emerald-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-emerald-600 transition-colors"
+            disabled={generatingReport}
+            className="bg-emerald-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-emerald-600 transition-colors disabled:opacity-50"
           >
             <FileDown className="w-5 h-5" />
-            Generate Report
+            {generatingReport ? 'Generating...' : 'Generate Report'}
           </button>
           <button
             onClick={handleCreateReport}
@@ -166,6 +202,7 @@ const Reports = () => {
       </div>
 
       <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
+        <h2 className="text-lg font-medium mb-4">Report Generation Filters</h2>
         <div className="flex flex-wrap gap-4 mb-6">
           <div className="flex-1 min-w-[200px]">
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -266,14 +303,14 @@ const Reports = () => {
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500 mx-auto"></div>
           <p className="mt-4 text-gray-600">Loading reports...</p>
         </div>
-      ) : reports.length === 0 ? (
+      ) : filteredReports.length === 0 ? (
         <div className="text-center py-12 bg-white rounded-lg shadow-sm">
           <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <FileDown className="w-8 h-8 text-gray-400" />
           </div>
           <h3 className="text-lg font-medium text-gray-900 mb-2">No Reports Found</h3>
           <p className="text-gray-600 mb-6">
-            Try adjusting your filters or create a new report
+            Try adjusting your search or create a new report
           </p>
           <button
             onClick={handleCreateReport}
@@ -285,7 +322,7 @@ const Reports = () => {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {reports.map((report) => (
+          {filteredReports.map((report) => (
             <div
               key={report.Id}
               className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow cursor-pointer"
