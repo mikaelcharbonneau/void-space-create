@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/hpe-logo.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>HPE Audit Portal</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" />
+    <script src="/diagnostic.js"></script>
+    <script>
+      // Simple debug script to check if the application is loading
+      window.addEventListener('DOMContentLoaded', function() {
+        console.log('DOM fully loaded');
+        setTimeout(function() {
+          if (document.body.innerHTML.trim() === '<div id="root"></div>') {
+            console.log('Application did not render after 5 seconds');
+            document.body.innerHTML = '<div style="padding: 20px; font-family: Arial, sans-serif;"><h1>HPE Audit Portal</h1><p>Application is loading...</p><p>If you continue to see this message, there may be a problem with the application. Try refreshing the page.</p><button onclick="window.location.reload()">Refresh Page</button></div>';
+          }
+        }, 5000);
+      });
+    </script>
+  </head>
+  <body>
+    <div id="root">
+      <!-- Loading state -->
+      <div style="display: flex; justify-content: center; align-items: center; height: 100vh; font-family: Arial, sans-serif;">
+        <div style="text-align: center;">
+          <h1>HPE Audit Portal</h1>
+          <p>Loading application...</p>
+          <div style="width: 50px; height: 50px; border: 5px solid #f3f3f3; border-top: 5px solid #01a982; border-radius: 50%; margin: 20px auto; animation: spin 1s linear infinite;"></div>
+        </div>
+      </div>
+      <style>
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+      </style>
+    </div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
