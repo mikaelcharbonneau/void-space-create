@@ -16,12 +16,10 @@ const ReportForm = () => {
     endOfWeek(new Date())
   ]);
   const [formData, setFormData] = useState({
-    title: '',
-    description: '',
-    type: 'inspection',
     datacenter: '',
     datahall: '',
-    status: 'draft'
+    state: 'Healthy',
+    issues_reported: 0
   });
 
   const datacenters = [
@@ -46,18 +44,17 @@ const ReportForm = () => {
 
     try {
       const { data, error } = await supabase
-        .from('reports')
+        .from('AuditReports')
         .insert([
           {
+            UserEmail: user?.email,
+            user_full_name: user?.user_metadata?.full_name || user?.email,
             ...formData,
-            user_id: user?.id,
-            date_range: {
-              start: dateRange[0]?.toISOString(),
-              end: dateRange[1]?.toISOString()
-            },
-            filters: {
-              datacenter: formData.datacenter,
-              datahall: formData.datahall
+            ReportData: {
+              date_range: {
+                start: dateRange[0]?.toISOString(),
+                end: dateRange[1]?.toISOString()
+              }
             }
           }
         ])
@@ -66,7 +63,7 @@ const ReportForm = () => {
 
       if (error) throw error;
 
-      navigate(`/reports/${data.id}`);
+      navigate(`/reports/${data.Id}`);
     } catch (error) {
       console.error('Error creating report:', error);
     } finally {
@@ -100,22 +97,6 @@ const ReportForm = () => {
           <h1 className="text-2xl font-semibold mb-6">Generate New Report</h1>
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
-              <label htmlFor="title" className="block text-sm font-medium text-gray-700 mb-1">
-                Report Title *
-              </label>
-              <input
-                type="text"
-                id="title"
-                name="title"
-                required
-                value={formData.title}
-                onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                placeholder="Enter report title"
-              />
-            </div>
-
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Date Range *
@@ -183,35 +164,35 @@ const ReportForm = () => {
             </div>
 
             <div>
-              <label htmlFor="type" className="block text-sm font-medium text-gray-700 mb-1">
-                Report Type *
+              <label htmlFor="state" className="block text-sm font-medium text-gray-700 mb-1">
+                State *
               </label>
               <select
-                id="type"
-                name="type"
+                id="state"
+                name="state"
                 required
-                value={formData.type}
+                value={formData.state}
                 onChange={handleChange}
                 className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
               >
-                <option value="inspection">Inspection</option>
-                <option value="incident">Incident</option>
-                <option value="maintenance">Maintenance</option>
+                <option value="Healthy">Healthy</option>
+                <option value="Warning">Warning</option>
+                <option value="Critical">Critical</option>
               </select>
             </div>
 
             <div>
-              <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
-                Description
+              <label htmlFor="issues_reported" className="block text-sm font-medium text-gray-700 mb-1">
+                Issues Reported
               </label>
-              <textarea
-                id="description"
-                name="description"
-                value={formData.description}
+              <input
+                type="number"
+                id="issues_reported"
+                name="issues_reported"
+                value={formData.issues_reported}
                 onChange={handleChange}
-                rows={4}
+                min="0"
                 className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                placeholder="Enter report description"
               />
             </div>
 

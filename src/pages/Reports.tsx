@@ -8,14 +8,16 @@ import DatePicker from 'react-datepicker';
 import "react-datepicker/dist/react-datepicker.css";
 
 interface Report {
-  id: string;
-  title: string;
-  description: string;
-  status: string;
-  type: string;
-  location: string;
-  created_at: string;
-  data: any;
+  Id: string;
+  UserEmail: string;
+  Timestamp: string;
+  ReportData: any;
+  datacenter: string;
+  datahall: string;
+  issues_reported: number;
+  state: string;
+  user_full_name: string;
+  walkthrough_id: number;
 }
 
 const Reports = () => {
@@ -57,17 +59,17 @@ const Reports = () => {
     try {
       setLoading(true);
       let query = supabase
-        .from('reports')
+        .from('AuditReports')
         .select('*')
-        .order('created_at', { ascending: false });
+        .order('Timestamp', { ascending: false });
 
       if (dateRange[0] && dateRange[1]) {
-        query = query.gte('created_at', dateRange[0].toISOString())
-                    .lte('created_at', dateRange[1].toISOString());
+        query = query.gte('Timestamp', dateRange[0].toISOString())
+                    .lte('Timestamp', dateRange[1].toISOString());
       }
 
       if (selectedDatacenter) {
-        query = query.eq('location', selectedDatacenter);
+        query = query.eq('datacenter', selectedDatacenter);
       }
 
       if (selectedDatahall) {
@@ -75,7 +77,7 @@ const Reports = () => {
       }
 
       if (selectedStatus) {
-        query = query.eq('status', selectedStatus);
+        query = query.eq('state', selectedStatus);
       }
 
       const { data, error } = await query;
@@ -97,8 +99,8 @@ const Reports = () => {
     try {
       setLoading(true);
       const filteredData = reports.filter(report => {
-        const matchesSearch = report.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                            report.description.toLowerCase().includes(searchTerm.toLowerCase());
+        const matchesSearch = report.user_full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                            report.datacenter.toLowerCase().includes(searchTerm.toLowerCase());
         return matchesSearch;
       });
 
@@ -118,30 +120,23 @@ const Reports = () => {
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'published':
+  const getStatusColor = (state: string) => {
+    switch (state) {
+      case 'Healthy':
         return 'bg-emerald-100 text-emerald-800';
-      case 'draft':
+      case 'Warning':
         return 'bg-amber-100 text-amber-800';
-      case 'archived':
-        return 'bg-gray-100 text-gray-800';
+      case 'Critical':
+        return 'bg-red-100 text-red-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
   };
 
-  const getTypeIcon = (type: string) => {
-    switch (type) {
-      case 'inspection':
-        return '🔍';
-      case 'incident':
-        return '⚠️';
-      case 'maintenance':
-        return '🔧';
-      default:
-        return '📄';
-    }
+  const getTypeIcon = (issues: number) => {
+    if (issues > 5) return '⚠️';
+    if (issues > 0) return '🔍';
+    return '✅';
   };
 
   return (
@@ -245,9 +240,9 @@ const Reports = () => {
               className="w-full px-4 py-2 border border-gray-300 rounded-md"
             >
               <option value="">All Statuses</option>
-              <option value="draft">Draft</option>
-              <option value="published">Published</option>
-              <option value="archived">Archived</option>
+              <option value="Healthy">Healthy</option>
+              <option value="Warning">Warning</option>
+              <option value="Critical">Critical</option>
             </select>
           </div>
         </div>
@@ -292,31 +287,31 @@ const Reports = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {reports.map((report) => (
             <div
-              key={report.id}
+              key={report.Id}
               className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow cursor-pointer"
-              onClick={() => navigate(`/reports/${report.id}`)}
+              onClick={() => navigate(`/reports/${report.Id}`)}
             >
               <div className="p-6">
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center">
-                    <span className="text-2xl mr-3">{getTypeIcon(report.type)}</span>
+                    <span className="text-2xl mr-3">{getTypeIcon(report.issues_reported)}</span>
                     <div>
                       <h3 className="text-lg font-medium text-gray-900 mb-1">
-                        {report.title}
+                        {report.datacenter}
                       </h3>
-                      <p className="text-sm text-gray-600">{report.location}</p>
+                      <p className="text-sm text-gray-600">{report.datahall}</p>
                     </div>
                   </div>
-                  <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${getStatusColor(report.status)}`}>
-                    {report.status.charAt(0).toUpperCase() + report.status.slice(1)}
+                  <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${getStatusColor(report.state)}`}>
+                    {report.state}
                   </span>
                 </div>
                 <p className="text-gray-600 text-sm mb-4 line-clamp-2">
-                  {report.description}
+                  {`Issues reported: ${report.issues_reported}`}
                 </p>
                 <div className="flex items-center text-sm text-gray-500">
                   <Calendar className="w-4 h-4 mr-2" />
-                  {format(new Date(report.created_at), 'MMM d, yyyy')}
+                  {format(new Date(report.Timestamp), 'MMM d, yyyy')}
                 </div>
               </div>
             </div>
