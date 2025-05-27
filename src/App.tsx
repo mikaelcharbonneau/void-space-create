@@ -43,7 +43,7 @@ const App = () => {
                     <Route path="reports/:id" element={<Reports />} />
                     <Route path="profile" element={<Profile />} />
                     <Route path="not-found" element={<NotFound />} />
-                    <Route path="*" element={<Navigate to="/not-found" replace />} />
+                    <Route path="*" element={<Navigate to="/not-found\" replace />} />
                   </Route>
                 </Route>
               </Routes>
