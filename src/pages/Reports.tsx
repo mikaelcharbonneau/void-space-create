@@ -1,26 +1,28 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, Filter, FileDown, Calendar, Plus } from 'lucide-react';
-import { format } from 'date-fns';
+import { format, subDays } from 'date-fns';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../context/AuthContext';
+import DatePicker from 'react-datepicker';
+import "react-datepicker/dist/react-datepicker.css";
 
 interface Report {
   id: string;
   title: string;
-  description: string;
-  status: string;
-  type: string;
-  location: string;
+  user_id: string;
   created_at: string;
-  data: any;
-}
-
-interface FilterOptions {
-  severity: string;
-  location: string;
-  dateRange: string;
-  issueType: string[];
+  date_range: {
+    start: string;
+    end: string;
+  };
+  filters: {
+    severity?: string[];
+    locations?: string[];
+    status?: string[];
+  };
+  issues: any[];
+  summary: string;
 }
 
 const Reports = () => {
@@ -29,11 +31,14 @@ const Reports = () => {
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
-  const [filters, setFilters] = useState<FilterOptions>({
-    severity: '',
-    location: '',
-    dateRange: '7days',
-    issueType: []
+  const [dateRange, setDateRange] = useState<[Date | null, Date | null]>([
+    subDays(new Date(), 7),
+    new Date()
+  ]);
+  const [filters, setFilters] = useState({
+    severity: [] as string[],
+    locations: [] as string[],
+    status: [] as string[]
   });
 
   useEffect(() => {
@@ -56,50 +61,77 @@ const Reports = () => {
     }
   };
 
-  const handleFilterChange = (key: keyof FilterOptions, value: string | string[]) => {
-    setFilters(prev => ({ ...prev, [key]: value }));
-  };
-
   const handleGenerateReport = async () => {
+    if (!dateRange[0] || !dateRange[1]) {
+      alert('Please select a date range');
+      return;
+    }
+
     setGenerating(true);
     try {
-      // Fetch issues based on filters
-      const { data: issues, error: issuesError } = await supabase
+      // Fetch incidents based on filters
+      let query = supabase
         .from('incidents')
         .select('*')
-        .match(filters.severity ? { severity: filters.severity } : {})
-        .match(filters.location ? { location: filters.location } : {});
+        .gte('created_at', dateRange[0].toISOString())
+        .lte('created_at', dateRange[1].toISOString());
 
+      if (filters.severity.length > 0) {
+        query = query.in('severity', filters.severity);
+      }
+      if (filters.locations.length > 0) {
+        query = query.in('location', filters.locations);
+      }
+      if (filters.status.length > 0) {
+        query = query.in('status', filters.status);
+      }
+
+      const { data: issues, error: issuesError } = await query;
       if (issuesError) throw issuesError;
 
-      // Create report with filtered issues
+      // Generate report summary
+      const summary = generateReportSummary(issues || []);
+
+      // Create report
       const { data: report, error: reportError } = await supabase
         .from('reports')
         .insert([{
-          title: `Issue Report - ${format(new Date(), 'MMM d, yyyy')}`,
-          description: `Generated report containing ${issues?.length || 0} issues`,
-          type: 'inspection',
-          status: 'published',
-          location: filters.location || 'All Locations',
+          title: `Incident Report ${format(dateRange[0], 'MMM d')} - ${format(dateRange[1], 'MMM d, yyyy')}`,
           user_id: user?.id,
-          data: {
-            filters,
-            issues,
-            generated_at: new Date().toISOString()
-          }
+          date_range: {
+            start: dateRange[0].toISOString(),
+            end: dateRange[1].toISOString()
+          },
+          filters,
+          issues: issues || [],
+          summary
         }])
         .select()
         .single();
 
       if (reportError) throw reportError;
 
-      // Navigate to the new report
+      await fetchReports();
       navigate(`/reports/${report.id}`);
     } catch (error) {
       console.error('Error generating report:', error);
+      alert('Failed to generate report. Please try again.');
     } finally {
       setGenerating(false);
     }
+  };
+
+  const generateReportSummary = (issues: any[]) => {
+    const totalIssues = issues.length;
+    const bySeverity = issues.reduce((acc: any, issue) => {
+      acc[issue.severity] = (acc[issue.severity] || 0) + 1;
+      return acc;
+    }, {});
+
+    return `Report contains ${totalIssues} issue${totalIssues !== 1 ? 's' : ''} ` +
+      `(${Object.entries(bySeverity)
+        .map(([severity, count]) => `${count} ${severity}`)
+        .join(', ')})`;
   };
 
   return (
@@ -107,82 +139,76 @@ const Reports = () => {
       <div className="flex justify-between items-center mb-8">
         <div>
           <h1 className="text-2xl font-semibold mb-2">Reports</h1>
-          <p className="text-gray-600">Generate and view issue reports</p>
+          <p className="text-gray-600">Generate and view incident reports</p>
         </div>
       </div>
 
-      {/* Filters Section */}
+      {/* Report Generation Section */}
       <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
-        <h2 className="text-lg font-medium mb-4">Report Filters</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <h2 className="text-lg font-medium mb-6">Generate New Report</h2>
+        
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Severity
-            </label>
-            <select
-              value={filters.severity}
-              onChange={(e) => handleFilterChange('severity', e.target.value)}
-              className="w-full border border-gray-300 rounded-md p-2"
-            >
-              <option value="">All Severities</option>
-              <option value="low">Low</option>
-              <option value="medium">Medium</option>
-              <option value="high">High</option>
-              <option value="critical">Critical</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Location
-            </label>
-            <select
-              value={filters.location}
-              onChange={(e) => handleFilterChange('location', e.target.value)}
-              className="w-full border border-gray-300 rounded-md p-2"
-            >
-              <option value="">All Locations</option>
-              <option value="data-center-a">Data Center A</option>
-              <option value="data-center-b">Data Center B</option>
-              <option value="data-center-c">Data Center C</option>
-            </select>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
               Date Range
             </label>
-            <select
-              value={filters.dateRange}
-              onChange={(e) => handleFilterChange('dateRange', e.target.value)}
-              className="w-full border border-gray-300 rounded-md p-2"
-            >
-              <option value="7days">Last 7 Days</option>
-              <option value="30days">Last 30 Days</option>
-              <option value="90days">Last 90 Days</option>
-              <option value="all">All Time</option>
-            </select>
+            <DatePicker
+              selectsRange
+              startDate={dateRange[0]}
+              endDate={dateRange[1]}
+              onChange={(update) => setDateRange(update)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-md"
+              maxDate={new Date()}
+            />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Issue Types
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Severity
             </label>
             <div className="space-y-2">
-              {['Hardware', 'Software', 'Network', 'Power'].map(type => (
-                <label key={type} className="flex items-center">
+              {['critical', 'high', 'medium', 'low'].map(severity => (
+                <label key={severity} className="flex items-center">
                   <input
                     type="checkbox"
-                    checked={filters.issueType.includes(type)}
+                    checked={filters.severity.includes(severity)}
                     onChange={(e) => {
-                      const newTypes = e.target.checked
-                        ? [...filters.issueType, type]
-                        : filters.issueType.filter(t => t !== type);
-                      handleFilterChange('issueType', newTypes);
+                      setFilters(prev => ({
+                        ...prev,
+                        severity: e.target.checked
+                          ? [...prev.severity, severity]
+                          : prev.severity.filter(s => s !== severity)
+                      }));
                     }}
                     className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
                   />
-                  <span className="ml-2 text-sm text-gray-600">{type}</span>
+                  <span className="ml-2 text-sm text-gray-600 capitalize">{severity}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Status
+            </label>
+            <div className="space-y-2">
+              {['open', 'in-progress', 'resolved'].map(status => (
+                <label key={status} className="flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={filters.status.includes(status)}
+                    onChange={(e) => {
+                      setFilters(prev => ({
+                        ...prev,
+                        status: e.target.checked
+                          ? [...prev.status, status]
+                          : prev.status.filter(s => s !== status)
+                      }));
+                    }}
+                    className="rounded border-gray-300 text-emerald-600 focus:ring-emerald-500"
+                  />
+                  <span className="ml-2 text-sm text-gray-600 capitalize">{status.replace('-', ' ')}</span>
                 </label>
               ))}
             </div>
@@ -192,8 +218,8 @@ const Reports = () => {
         <div className="mt-6 flex justify-end">
           <button
             onClick={handleGenerateReport}
-            disabled={generating}
-            className="bg-emerald-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-emerald-600 transition-colors disabled:opacity-50"
+            disabled={generating || !dateRange[0] || !dateRange[1]}
+            className="bg-emerald-500 text-white px-6 py-2 rounded-lg flex items-center gap-2 hover:bg-emerald-600 transition-colors disabled:opacity-50"
           >
             {generating ? 'Generating...' : 'Generate Report'}
           </button>
@@ -201,7 +227,22 @@ const Reports = () => {
       </div>
 
       {/* Generated Reports List */}
-      {reports.length > 0 && (
+      {loading ? (
+        <div className="text-center py-12">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading reports...</p>
+        </div>
+      ) : reports.length === 0 ? (
+        <div className="text-center py-12 bg-white rounded-lg shadow-sm">
+          <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+            <FileDown className="w-8 h-8 text-gray-400" />
+          </div>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">No Reports Yet</h3>
+          <p className="text-gray-600 mb-6">
+            Generate your first report using the filters above
+          </p>
+        </div>
+      ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {reports.map((report) => (
             <div
@@ -210,25 +251,20 @@ const Reports = () => {
               onClick={() => navigate(`/reports/${report.id}`)}
             >
               <div className="p-6">
-                <div className="flex items-start justify-between mb-4">
-                  <div>
-                    <h3 className="text-lg font-medium text-gray-900 mb-1">
-                      {report.title}
-                    </h3>
-                    <p className="text-sm text-gray-600">{report.location}</p>
-                  </div>
-                  <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${
-                    report.status === 'published' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
-                  }`}>
-                    {report.status.charAt(0).toUpperCase() + report.status.slice(1)}
-                  </span>
-                </div>
-                <p className="text-gray-600 text-sm mb-4 line-clamp-2">
-                  {report.description}
+                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                  {report.title}
+                </h3>
+                <p className="text-sm text-gray-600 mb-4">
+                  {report.summary}
                 </p>
-                <div className="flex items-center text-sm text-gray-500">
-                  <Calendar className="w-4 h-4 mr-2" />
-                  {format(new Date(report.created_at), 'MMM d, yyyy')}
+                <div className="flex items-center justify-between text-sm text-gray-500">
+                  <div className="flex items-center">
+                    <Calendar className="w-4 h-4 mr-2" />
+                    {format(new Date(report.created_at), 'MMM d, yyyy')}
+                  </div>
+                  <span className="text-emerald-600">
+                    {report.issues.length} issues
+                  </span>
                 </div>
               </div>
             </div>
