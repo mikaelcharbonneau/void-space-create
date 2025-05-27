@@ -1,382 +1,321 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import {
   Box,
   Button,
-  Heading,
-  Text,
-  Spinner,
+  Calendar,
+  CheckBoxGroup,
   Grid,
-  Card,
-  CardHeader,
-  CardBody,
-  CardFooter,
-  Meter,
-  Table,
-  TableHeader,
-  TableRow,
-  TableCell,
-  TableBody
+  Heading,
+  Layer,
+  Select,
+  Spinner,
+  Text
 } from 'grommet';
-import { StatusWarning, FormPrevious, Download } from 'grommet-icons';
+import { Filter, RefreshCw, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { supabase } from '../lib/supabaseClient';
+import { locations } from '../utils/locationMapping';
 
-interface ReportData {
-  Id: string;
-  UserEmail: string;
-  Timestamp: string;
-  ReportData: {
-    datahall: string;
-    status: string;
-    isUrgent: boolean;
-    temperatureReading: string;
-    humidityReading: string;
-    comments?: string;
-    securityPassed: boolean;
-    coolingSystemCheck: boolean;
-    [key: string]: any;
-  };
+interface ReportFilters {
+  fromDate: string | null;
+  toDate: string | null;
+  parts: string[];
+  severityLevels: string[];
+  datacenters: string[];
+  datahalls: string[];
 }
 
 const Reports = () => {
-  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [reports, setReports] = useState<ReportData[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [showFilters, setShowFilters] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const [reports, setReports] = useState<any[]>([]);
+  const [filters, setFilters] = useState<ReportFilters>({
+    fromDate: null,
+    toDate: null,
+    parts: [],
+    severityLevels: [],
+    datacenters: [],
+    datahalls: []
+  });
+
+  const partOptions = [
+    'Power Supply Unit',
+    'Power Distribution Unit',
+    'Rear Door Heat Exchanger'
+  ];
+
+  const severityOptions = [
+    'Critical',
+    'High',
+    'Medium',
+    'Low'
+  ];
+
+  const datahallOptions = [
+    'Island 1',
+    'Island 8',
+    'Island 9',
+    'Island 10',
+    'Island 11',
+    'Island 12',
+    'Green Nitrogen'
+  ];
 
   useEffect(() => {
-    if (id) {
-      fetchSingleReport(id);
-    } else {
-      fetchAllReports();
-    }
-  }, [id]);
+    fetchReports();
+  }, []);
 
-  const fetchAllReports = async () => {
+  const fetchReports = async () => {
     try {
-      const { data, error: supabaseError } = await supabase
+      setLoading(true);
+      let query = supabase
         .from('AuditReports')
         .select('*')
         .order('Timestamp', { ascending: false });
 
-      if (supabaseError) throw supabaseError;
-      setReports(data || []);
-    } catch (error: any) {
-      console.error('Error fetching reports:', error);
-      setError(error.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchSingleReport = async (reportId: string) => {
-    try {
-      const { data, error: supabaseError } = await supabase
-        .from('AuditReports')
-        .select('*')
-        .eq('Id', reportId)
-        .single();
-      
-      if (supabaseError) throw supabaseError;
-      if (data) {
-        setReports([data]);
-      } else {
-        throw new Error('Report not found');
+      if (filters.fromDate) {
+        query = query.gte('Timestamp', filters.fromDate);
       }
-    } catch (error: any) {
-      console.error('Error fetching report:', error);
-      setError(error.message);
+      if (filters.toDate) {
+        query = query.lte('Timestamp', filters.toDate);
+      }
+      if (filters.datacenters.length > 0) {
+        query = query.in('datacenter', filters.datacenters);
+      }
+      if (filters.datahalls.length > 0) {
+        query = query.in('datahall', filters.datahalls);
+      }
+
+      const { data, error } = await query;
+
+      if (error) throw error;
+
+      // Filter by parts and severity if selected
+      let filteredData = data || [];
+      if (filters.parts.length > 0 || filters.severityLevels.length > 0) {
+        filteredData = filteredData.filter(report => {
+          const hasSelectedParts = filters.parts.length === 0 || report.ReportData.racks?.some((rack: any) => 
+            (filters.parts.includes('Power Supply Unit') && rack.devices.powerSupplyUnit) ||
+            (filters.parts.includes('Power Distribution Unit') && rack.devices.powerDistributionUnit) ||
+            (filters.parts.includes('Rear Door Heat Exchanger') && rack.devices.rearDoorHeatExchanger)
+          );
+
+          const matchesSeverity = filters.severityLevels.length === 0 || 
+            filters.severityLevels.includes(report.state);
+
+          return hasSelectedParts && matchesSeverity;
+        });
+      }
+
+      setReports(filteredData);
+    } catch (error) {
+      console.error('Error fetching reports:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const downloadReport = (report: ReportData) => {
-    const reportData = JSON.stringify(report, null, 2);
-    const blob = new Blob([reportData], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `audit-report-${report.Id}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+  const handleGenerateReport = async () => {
+    setGenerating(true);
+    await fetchReports();
+    setGenerating(false);
+    setShowFilters(false);
   };
 
-  if (loading) {
-    return (
-      <Box align="center" justify="center" height="medium" pad="large">
-        <Spinner size="medium" />
-        <Text margin={{ top: 'small' }}>Loading reports...</Text>
-      </Box>
-    );
-  }
-
-  if (error) {
-    return (
-      <Box pad="medium">
-        <Button
-          icon={<FormPrevious />}
-          label="Back"
-          onClick={() => navigate(-1)}
-          margin={{ bottom: 'medium' }}
-        />
-        <Box
-          background="status-error"
-          pad="medium"
-          round="small"
-          direction="row"
-          gap="small"
-          align="center"
-        >
-          <StatusWarning color="white" />
-          <Text color="white">Error loading reports: {error}</Text>
-        </Box>
-      </Box>
-    );
-  }
-
-  // Show all reports if no ID is provided
-  if (!id) {
-    return (
-      <Box pad="medium">
-        <Heading level={2} margin={{ bottom: 'medium' }}>Reports</Heading>
-        <Grid columns={{ count: 'fit', size: 'medium' }} gap="medium">
-          {reports.map((report) => (
-            <Card key={report.Id} background="light-1" onClick={() => navigate(`/reports/${report.Id}`)}>
-              <CardHeader pad="medium">
-                <Text weight="bold">{report.ReportData.datahall}</Text>
-              </CardHeader>
-              <CardBody pad="medium">
-                <Box gap="small">
-                  <Text size="small">Submitted by: {report.UserEmail}</Text>
-                  <Text size="small">Date: {format(new Date(report.Timestamp), 'PPp')}</Text>
-                  <Box 
-                    background={report.ReportData.isUrgent ? 'status-critical' : 'status-ok'}
-                    pad={{ horizontal: 'small', vertical: 'xsmall' }}
-                    round="small"
-                    width="fit-content"
-                  >
-                    <Text size="small">{report.ReportData.isUrgent ? 'Urgent' : 'Normal'}</Text>
-                  </Box>
-                </Box>
-              </CardBody>
-              <CardFooter pad="medium" background="light-2">
-                <Button label="View Details" onClick={() => navigate(`/reports/${report.Id}`)} />
-              </CardFooter>
-            </Card>
-          ))}
-        </Grid>
-      </Box>
-    );
-  }
-
-  // Show single report details
-  const report = reports[0];
-  if (!report) {
-    return (
-      <Box pad="medium">
-        <Button
-          icon={<FormPrevious />}
-          label="Back to Reports"
-          onClick={() => navigate('/reports')}
-          margin={{ bottom: 'medium' }}
-        />
-        <Box
-          background="light-2"
-          pad="large"
-          round="small"
-          align="center"
-          justify="center"
-          height="medium"
-        >
-          <Text size="xlarge">Report not found</Text>
-          <Text>The requested report could not be found or has been deleted.</Text>
-        </Box>
-      </Box>
-    );
-  }
-
-  const temperatureValue = parseFloat(report.ReportData.temperatureReading);
-  const humidityValue = parseFloat(report.ReportData.humidityReading);
+  const clearFilters = () => {
+    setFilters({
+      fromDate: null,
+      toDate: null,
+      parts: [],
+      severityLevels: [],
+      datacenters: [],
+      datahalls: []
+    });
+  };
 
   return (
     <Box pad="medium">
       <Box direction="row" justify="between" align="center" margin={{ bottom: 'medium' }}>
-        <Button
-          icon={<FormPrevious />}
-          label="Back to Reports"
-          onClick={() => navigate('/reports')}
-        />
-        <Button
-          icon={<Download />}
-          label="Download Report"
-          onClick={() => downloadReport(report)}
-          primary
-        />
+        <Heading level={2} margin="none">Reports</Heading>
+        <Box direction="row" gap="small">
+          <Button
+            icon={<Filter />}
+            label="Filters"
+            onClick={() => setShowFilters(true)}
+          />
+          <Button
+            primary
+            icon={<RefreshCw />}
+            label="Generate Report"
+            onClick={handleGenerateReport}
+            disabled={generating}
+          />
+        </Box>
       </Box>
 
-      <Heading level={2}>
-        Audit Report - {report.ReportData.datahall}
-      </Heading>
-      <Text margin={{ bottom: 'medium' }}>
-        Generated on {format(new Date(report.Timestamp), 'PPp')}
-      </Text>
-
-      <Grid columns={['1/2', '1/2']} gap="medium" margin={{ bottom: 'medium' }}>
-        <Card background="light-1" pad="medium">
-          <CardHeader>
-            <Heading level={3} margin="none">
-              General Information
-            </Heading>
-          </CardHeader>
-          <CardBody>
-            <Box gap="small">
-              <Box direction="row" justify="between">
-                <Text weight="bold">Report ID:</Text>
-                <Text>{report.Id}</Text>
-              </Box>
-              <Box direction="row" justify="between">
-                <Text weight="bold">Submitted By:</Text>
-                <Text>{report.UserEmail}</Text>
-              </Box>
-              <Box direction="row" justify="between">
-                <Text weight="bold">Date & Time:</Text>
-                <Text>{format(new Date(report.Timestamp), 'PPp')}</Text>
-              </Box>
-              <Box direction="row" justify="between">
-                <Text weight="bold">Data Hall:</Text>
-                <Text>{report.ReportData.datahall}</Text>
-              </Box>
-              <Box direction="row" justify="between">
-                <Text weight="bold">Status:</Text>
+      {loading ? (
+        <Box align="center" justify="center" height="medium">
+          <Spinner />
+          <Text margin={{ top: 'small' }}>Loading reports...</Text>
+        </Box>
+      ) : reports.length === 0 ? (
+        <Box
+          background="light-2"
+          pad="large"
+          align="center"
+          round="small"
+        >
+          <Text>No reports found. Try adjusting your filters.</Text>
+        </Box>
+      ) : (
+        <Grid columns={{ count: 'fit', size: 'medium' }} gap="medium">
+          {reports.map((report) => (
+            <Box
+              key={report.Id}
+              background="light-1"
+              round="small"
+              pad="medium"
+              onClick={() => navigate(`/reports/${report.Id}`)}
+              hoverIndicator
+            >
+              <Text weight="bold">{report.datacenter} - {report.datahall}</Text>
+              <Text size="small" color="dark-6">
+                {format(new Date(report.Timestamp), 'PPp')}
+              </Text>
+              <Box
+                direction="row"
+                gap="small"
+                margin={{ top: 'small' }}
+                wrap
+              >
                 <Box
-                  background={report.ReportData.isUrgent ? 'status-critical' : 'status-ok'}
+                  background={report.state === 'Critical' ? 'status-critical' : 
+                            report.state === 'Warning' ? 'status-warning' : 
+                            'status-ok'}
                   pad={{ horizontal: 'small', vertical: 'xsmall' }}
                   round="small"
                 >
-                  <Text size="small">{report.ReportData.isUrgent ? 'Urgent' : 'Normal'}</Text>
+                  <Text size="small">{report.state}</Text>
+                </Box>
+                <Box
+                  background="light-3"
+                  pad={{ horizontal: 'small', vertical: 'xsmall' }}
+                  round="small"
+                >
+                  <Text size="small">{report.issues_reported} issues</Text>
                 </Box>
               </Box>
             </Box>
-          </CardBody>
-        </Card>
+          ))}
+        </Grid>
+      )}
 
-        <Card background="light-1" pad="medium">
-          <CardHeader>
-            <Heading level={3} margin="none">
-              Environmental Readings
-            </Heading>
-          </CardHeader>
-          <CardBody>
-            <Box gap="medium" pad={{ vertical: 'small' }}>
+      {showFilters && (
+        <Layer
+          position="right"
+          full="vertical"
+          modal
+          onClickOutside={() => setShowFilters(false)}
+          onEsc={() => setShowFilters(false)}
+        >
+          <Box
+            pad="medium"
+            gap="medium"
+            width="medium"
+            background="light-1"
+            height="100vh"
+            overflow="auto"
+          >
+            <Box direction="row" justify="between" align="center">
+              <Heading level={3} margin="none">Filters</Heading>
+              <Button
+                icon={<X />}
+                onClick={() => setShowFilters(false)}
+                plain
+              />
+            </Box>
+
+            <Box gap="medium">
               <Box>
-                <Text weight="bold" margin={{ bottom: 'xsmall' }}>Temperature</Text>
-                <Box align="center" direction="row" gap="small">
-                  <Meter
-                    type="bar"
-                    background="light-2"
-                    values={[{
-                      value: temperatureValue,
-                      color: temperatureValue > 27 ? 'status-critical' :
-                             temperatureValue < 18 ? 'status-warning' : 'status-ok'
-                    }]}
-                    max={40}
-                    size="small"
+                <Text weight="bold" margin={{ bottom: 'xsmall' }}>Date Range</Text>
+                <Box gap="small">
+                  <Calendar
+                    date={filters.fromDate}
+                    onSelect={date => setFilters(prev => ({ ...prev, fromDate: date }))}
+                    bounds={['2020-01-01', '2030-12-31']}
+                    header={({ date }) => format(date, 'MMMM yyyy')}
                   />
-                  <Text>{temperatureValue}°C</Text>
+                  <Calendar
+                    date={filters.toDate}
+                    onSelect={date => setFilters(prev => ({ ...prev, toDate: date }))}
+                    bounds={['2020-01-01', '2030-12-31']}
+                    header={({ date }) => format(date, 'MMMM yyyy')}
+                  />
                 </Box>
               </Box>
+
               <Box>
-                <Text weight="bold" margin={{ bottom: 'xsmall' }}>Humidity</Text>
-                <Box align="center" direction="row" gap="small">
-                  <Meter
-                    type="bar"
-                    background="light-2"
-                    values={[{
-                      value: humidityValue,
-                      color: humidityValue > 70 ? 'status-critical' :
-                             humidityValue < 30 ? 'status-warning' : 'status-ok'
-                    }]}
-                    max={100}
-                    size="small"
-                  />
-                  <Text>{humidityValue}%</Text>
-                </Box>
+                <Text weight="bold" margin={{ bottom: 'xsmall' }}>Parts</Text>
+                <CheckBoxGroup
+                  options={partOptions}
+                  value={filters.parts}
+                  onChange={({ value }) => setFilters(prev => ({ ...prev, parts: value }))}
+                />
+              </Box>
+
+              <Box>
+                <Text weight="bold" margin={{ bottom: 'xsmall' }}>Severity Levels</Text>
+                <CheckBoxGroup
+                  options={severityOptions}
+                  value={filters.severityLevels}
+                  onChange={({ value }) => setFilters(prev => ({ ...prev, severityLevels: value }))}
+                />
+              </Box>
+
+              <Box>
+                <Text weight="bold" margin={{ bottom: 'xsmall' }}>Datacenters</Text>
+                <Select
+                  multiple
+                  options={locations}
+                  value={filters.datacenters}
+                  onChange={({ value }) => setFilters(prev => ({ ...prev, datacenters: value }))}
+                  placeholder="Select datacenters"
+                />
+              </Box>
+
+              <Box>
+                <Text weight="bold" margin={{ bottom: 'xsmall' }}>Data Halls</Text>
+                <Select
+                  multiple
+                  options={datahallOptions}
+                  value={filters.datahalls}
+                  onChange={({ value }) => setFilters(prev => ({ ...prev, datahalls: value }))}
+                  placeholder="Select data halls"
+                />
               </Box>
             </Box>
-          </CardBody>
-        </Card>
-      </Grid>
 
-      <Card background="light-1" pad="medium" margin={{ bottom: 'medium' }}>
-        <CardHeader>
-          <Heading level={3} margin="none">
-            System Checks
-          </Heading>
-        </CardHeader>
-        <CardBody>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableCell scope="col">
-                  <Text weight="bold">Check Item</Text>
-                </TableCell>
-                <TableCell scope="col">
-                  <Text weight="bold">Status</Text>
-                </TableCell>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              <TableRow>
-                <TableCell>
-                  <Text>Security Systems</Text>
-                </TableCell>
-                <TableCell>
-                  <Box
-                    background={report.ReportData.securityPassed ? 'status-ok' : 'status-critical'}
-                    pad={{ horizontal: 'small', vertical: 'xsmall' }}
-                    round="small"
-                    width="fit-content"
-                  >
-                    <Text size="small">{report.ReportData.securityPassed ? 'PASSED' : 'FAILED'}</Text>
-                  </Box>
-                </TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell>
-                  <Text>Cooling System</Text>
-                </TableCell>
-                <TableCell>
-                  <Box
-                    background={report.ReportData.coolingSystemCheck ? 'status-ok' : 'status-critical'}
-                    pad={{ horizontal: 'small', vertical: 'xsmall' }}
-                    round="small"
-                    width="fit-content"
-                  >
-                    <Text size="small">{report.ReportData.coolingSystemCheck ? 'OPERATIONAL' : 'ISSUE DETECTED'}</Text>
-                  </Box>
-                </TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
-        </CardBody>
-      </Card>
-
-      {report.ReportData.comments && (
-        <Card background="light-1" pad="medium">
-          <CardHeader>
-            <Heading level={3} margin="none">
-              Additional Comments
-            </Heading>
-          </CardHeader>
-          <CardBody>
-            <Text>{report.ReportData.comments}</Text>
-          </CardBody>
-        </Card>
+            <Box
+              direction="row"
+              gap="small"
+              margin={{ top: 'medium' }}
+              justify="between"
+            >
+              <Button
+                label="Clear Filters"
+                onClick={clearFilters}
+              />
+              <Button
+                primary
+                label="Apply Filters"
+                onClick={handleGenerateReport}
+              />
+            </Box>
+          </Box>
+        </Layer>
       )}
     </Box>
   );
