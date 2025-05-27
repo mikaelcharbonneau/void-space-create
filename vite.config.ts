@@ -11,7 +11,9 @@ export default defineConfig({
   },
   server: {
     hmr: {
-      timeout: 120000
+      timeout: 120000,
+      host: 'localhost',
+      clientPort: 443
     },
     proxy: {
       '/api': {
