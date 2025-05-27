@@ -14,9 +14,13 @@ interface Inspection {
   state: 'Healthy' | 'Warning' | 'Critical';
   walkthrough_id: number;
   user_full_name: string;
+  ReportData: {
+    comments?: string;
+    [key: string]: any;
+  };
 }
 
-const Inspections = () => {
+const Incidents = () => {
   const navigate = useNavigate();
   const [inspections, setInspections] = useState<Inspection[]>([]);
   const [loading, setLoading] = useState(true);
@@ -52,7 +56,7 @@ const Inspections = () => {
   return (
     <div className="p-6">
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-2xl font-semibold">Inspections</h1>
+        <h1 className="text-2xl font-semibold">Recent Audits</h1>
         <button
           onClick={() => navigate('/inspection')}
           className="bg-emerald-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-emerald-600"
@@ -66,14 +70,14 @@ const Inspections = () => {
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
           <input
             type="text"
-            placeholder="Search inspections"
+            placeholder="Search audits"
             className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
         </div>
         <select className="border border-gray-200 rounded-lg px-4 py-2">
-          <option>All Statuses</option>
+          <option>All States</option>
           <option>Healthy</option>
           <option>Warning</option>
           <option>Critical</option>
@@ -96,19 +100,20 @@ const Inspections = () => {
                 <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Walkthrough ID</th>
                 <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Technician</th>
                 <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Comments</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
               {loading ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-4 text-center text-gray-500">
-                    Loading inspections...
+                  <td colSpan={8} className="px-6 py-4 text-center text-gray-500">
+                    Loading audits...
                   </td>
                 </tr>
               ) : filteredInspections.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-6 py-4 text-center text-gray-500">
-                    No inspections found
+                  <td colSpan={8} className="px-6 py-4 text-center text-gray-500">
+                    No audits found
                   </td>
                 </tr>
               ) : (
@@ -123,18 +128,21 @@ const Inspections = () => {
                     <td className="px-6 py-4 text-sm text-gray-900">{inspection.issues_reported}</td>
                     <td className="px-6 py-4 text-sm">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        inspection.state === 'Healthy'
+                        inspection.issues_reported === 0 
                           ? 'bg-green-100 text-green-800'
                           : inspection.state === 'Critical'
                             ? 'bg-red-100 text-red-800'
                             : 'bg-yellow-100 text-yellow-800'
                       }`}>
-                        {inspection.state}
+                        {inspection.issues_reported === 0 ? 'Healthy' : inspection.state}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-900">#{inspection.walkthrough_id}</td>
                     <td className="px-6 py-4 text-sm text-gray-900">{inspection.user_full_name}</td>
                     <td className="px-6 py-4 text-sm text-gray-900">{format(new Date(inspection.Timestamp), 'MMM d, yyyy')}</td>
+                    <td className="px-6 py-4 text-sm text-gray-900">
+                      {inspection.ReportData?.comments || '-'}
+                    </td>
                   </tr>
                 ))
               )}
@@ -146,4 +154,4 @@ const Inspections = () => {
   );
 };
 
-export default Inspections;
+export default Incidents;
