@@ -10,10 +10,12 @@ export default defineConfig({
     },
   },
   server: {
+    host: '0.0.0.0',
     hmr: {
       timeout: 120000,
-      clientPort: 443,
-      host: 'localhost'
+      host: '0.0.0.0',
+      protocol: 'ws',
+      clientPort: 443
     },
     proxy: {
       '/api': {
