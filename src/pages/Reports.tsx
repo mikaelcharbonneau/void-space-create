@@ -96,8 +96,6 @@ const Reports = () => {
   const handleGenerateReport = async () => {
     try {
       setLoading(true);
-      // Here you would typically call your report generation API
-      // For now, we'll just download the filtered data as JSON
       const filteredData = reports.filter(report => {
         const matchesSearch = report.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
                             report.description.toLowerCase().includes(searchTerm.toLowerCase());
