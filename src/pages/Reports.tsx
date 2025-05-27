@@ -1,246 +1,384 @@
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import DatePicker from 'react-datepicker';
-import "react-datepicker/dist/react-datepicker.css";
-import { Search, Filter, FileDown, FileText } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import {
+  Box,
+  Button,
+  Heading,
+  Text,
+  Spinner,
+  Grid,
+  Card,
+  CardHeader,
+  CardBody,
+  CardFooter,
+  Meter,
+  Table,
+  TableHeader,
+  TableRow,
+  TableCell,
+  TableBody
+} from 'grommet';
+import { StatusWarning, FormPrevious, Download } from 'grommet-icons';
 import { format } from 'date-fns';
 import { supabase } from '../lib/supabaseClient';
 
-interface FilterState {
-  startDate: Date | null;
-  endDate: Date | null;
-  datacenter: string;
-  datahall: string;
-  part: string;
-  severity: string;
+interface ReportData {
+  Id: string;
+  UserEmail: string;
+  Timestamp: string;
+  ReportData: {
+    datahall: string;
+    status: string;
+    isUrgent: boolean;
+    temperatureReading: string;
+    humidityReading: string;
+    comments?: string;
+    securityPassed: boolean;
+    coolingSystemCheck: boolean;
+    [key: string]: any;
+  };
 }
 
 const Reports = () => {
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(false);
-  const [filters, setFilters] = useState<FilterState>({
-    startDate: null,
-    endDate: null,
-    datacenter: '',
-    datahall: '',
-    part: '',
-    severity: ''
-  });
+  const [reports, setReports] = useState<ReportData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const handleGenerateReport = async () => {
-    setLoading(true);
+  useEffect(() => {
+    if (id) {
+      fetchSingleReport(id);
+    } else {
+      fetchAllReports();
+    }
+  }, [id]);
+
+  const fetchAllReports = async () => {
     try {
-      let query = supabase
+      const { data, error: supabaseError } = await supabase
         .from('AuditReports')
         .select('*')
         .order('Timestamp', { ascending: false });
 
-      if (filters.startDate) {
-        query = query.gte('Timestamp', filters.startDate.toISOString());
-      }
-      if (filters.endDate) {
-        query = query.lte('Timestamp', filters.endDate.toISOString());
-      }
-      if (filters.datacenter) {
-        query = query.eq('datacenter', filters.datacenter);
-      }
-      if (filters.datahall) {
-        query = query.eq('datahall', filters.datahall);
-      }
-      if (filters.severity) {
-        query = query.eq('state', filters.severity);
-      }
-
-      const { data, error } = await query;
-
-      if (error) throw error;
-
-      // Generate PDF report
-      const reportData = {
-        generatedAt: new Date().toISOString(),
-        filters: filters,
-        data: data
-      };
-
-      // For now, we'll just download as JSON
-      const blob = new Blob([JSON.stringify(reportData, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `audit-report-${format(new Date(), 'yyyy-MM-dd')}.json`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-
-    } catch (error) {
-      console.error('Error generating report:', error);
+      if (supabaseError) throw supabaseError;
+      setReports(data || []);
+    } catch (error: any) {
+      console.error('Error fetching reports:', error);
+      setError(error.message);
     } finally {
       setLoading(false);
     }
   };
 
+  const fetchSingleReport = async (reportId: string) => {
+    try {
+      const { data, error: supabaseError } = await supabase
+        .from('AuditReports')
+        .select('*')
+        .eq('Id', reportId)
+        .single();
+      
+      if (supabaseError) throw supabaseError;
+      if (data) {
+        setReports([data]);
+      } else {
+        throw new Error('Report not found');
+      }
+    } catch (error: any) {
+      console.error('Error fetching report:', error);
+      setError(error.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const downloadReport = (report: ReportData) => {
+    const reportData = JSON.stringify(report, null, 2);
+    const blob = new Blob([reportData], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `audit-report-${report.Id}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
+  if (loading) {
+    return (
+      <Box align="center" justify="center" height="medium" pad="large">
+        <Spinner size="medium" />
+        <Text margin={{ top: 'small' }}>Loading reports...</Text>
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box pad="medium">
+        <Button
+          icon={<FormPrevious />}
+          label="Back"
+          onClick={() => navigate(-1)}
+          margin={{ bottom: 'medium' }}
+        />
+        <Box
+          background="status-error"
+          pad="medium"
+          round="small"
+          direction="row"
+          gap="small"
+          align="center"
+        >
+          <StatusWarning color="white" />
+          <Text color="white">Error loading reports: {error}</Text>
+        </Box>
+      </Box>
+    );
+  }
+
+  // Show all reports if no ID is provided
+  if (!id) {
+    return (
+      <Box pad="medium">
+        <Heading level={2} margin={{ bottom: 'medium' }}>Reports</Heading>
+        <Grid columns={{ count: 'fit', size: 'medium' }} gap="medium">
+          {reports.map((report) => (
+            <Card key={report.Id} background="light-1" onClick={() => navigate(`/reports/${report.Id}`)}>
+              <CardHeader pad="medium">
+                <Text weight="bold">{report.ReportData.datahall}</Text>
+              </CardHeader>
+              <CardBody pad="medium">
+                <Box gap="small">
+                  <Text size="small">Submitted by: {report.UserEmail}</Text>
+                  <Text size="small">Date: {format(new Date(report.Timestamp), 'PPp')}</Text>
+                  <Box 
+                    background={report.ReportData.isUrgent ? 'status-critical' : 'status-ok'}
+                    pad={{ horizontal: 'small', vertical: 'xsmall' }}
+                    round="small"
+                    width="fit-content"
+                  >
+                    <Text size="small">{report.ReportData.isUrgent ? 'Urgent' : 'Normal'}</Text>
+                  </Box>
+                </Box>
+              </CardBody>
+              <CardFooter pad="medium" background="light-2">
+                <Button label="View Details" onClick={() => navigate(`/reports/${report.Id}`)} />
+              </CardFooter>
+            </Card>
+          ))}
+        </Grid>
+      </Box>
+    );
+  }
+
+  // Show single report details
+  const report = reports[0];
+  if (!report) {
+    return (
+      <Box pad="medium">
+        <Button
+          icon={<FormPrevious />}
+          label="Back to Reports"
+          onClick={() => navigate('/reports')}
+          margin={{ bottom: 'medium' }}
+        />
+        <Box
+          background="light-2"
+          pad="large"
+          round="small"
+          align="center"
+          justify="center"
+          height="medium"
+        >
+          <Text size="xlarge">Report not found</Text>
+          <Text>The requested report could not be found or has been deleted.</Text>
+        </Box>
+      </Box>
+    );
+  }
+
+  const temperatureValue = parseFloat(report.ReportData.temperatureReading);
+  const humidityValue = parseFloat(report.ReportData.humidityReading);
+
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-2xl font-semibold">Reports</h1>
-        <div className="flex gap-4">
-          <button
-            onClick={handleGenerateReport}
-            disabled={loading}
-            className="bg-emerald-500 text-white px-6 py-2 rounded-lg flex items-center gap-2 hover:bg-emerald-600 disabled:opacity-50"
-          >
-            <FileText className="w-5 h-5" />
-            Generate Report
-          </button>
-          <button
-            onClick={() => navigate('/inspection')}
-            className="bg-emerald-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-emerald-600"
-          >
-            Start Walkthrough
-          </button>
-        </div>
-      </div>
+    <Box pad="medium">
+      <Box direction="row" justify="between" align="center" margin={{ bottom: 'medium' }}>
+        <Button
+          icon={<FormPrevious />}
+          label="Back to Reports"
+          onClick={() => navigate('/reports')}
+        />
+        <Button
+          icon={<Download />}
+          label="Download Report"
+          onClick={() => downloadReport(report)}
+          primary
+        />
+      </Box>
 
-      <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
-        <h2 className="text-lg font-medium mb-6">Report Filters</h2>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {/* Date Range */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Start Date
-            </label>
-            <DatePicker
-              selected={filters.startDate}
-              onChange={(date) => setFilters(prev => ({ ...prev, startDate: date }))}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-              placeholderText="Select start date"
-              maxDate={new Date()}
-            />
-          </div>
-          
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              End Date
-            </label>
-            <DatePicker
-              selected={filters.endDate}
-              onChange={(date) => setFilters(prev => ({ ...prev, endDate: date }))}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-              placeholderText="Select end date"
-              maxDate={new Date()}
-              minDate={filters.startDate}
-            />
-          </div>
+      <Heading level={2}>
+        Audit Report - {report.ReportData.datahall}
+      </Heading>
+      <Text margin={{ bottom: 'medium' }}>
+        Generated on {format(new Date(report.Timestamp), 'PPp')}
+      </Text>
 
-          {/* Datacenter */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Datacenter
-            </label>
-            <select
-              value={filters.datacenter}
-              onChange={(e) => setFilters(prev => ({ ...prev, datacenter: e.target.value }))}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-            >
-              <option value="">All Datacenters</option>
-              <option value="Canada - Quebec">Canada - Quebec</option>
-              <option value="Norway - Enebakk">Norway - Enebakk</option>
-              <option value="Norway - Rjukan">Norway - Rjukan</option>
-              <option value="United States - Dallas">United States - Dallas</option>
-              <option value="United States - Houston">United States - Houston</option>
-            </select>
-          </div>
+      <Grid columns={['1/2', '1/2']} gap="medium" margin={{ bottom: 'medium' }}>
+        <Card background="light-1" pad="medium">
+          <CardHeader>
+            <Heading level={3} margin="none">
+              General Information
+            </Heading>
+          </CardHeader>
+          <CardBody>
+            <Box gap="small">
+              <Box direction="row" justify="between">
+                <Text weight="bold">Report ID:</Text>
+                <Text>{report.Id}</Text>
+              </Box>
+              <Box direction="row" justify="between">
+                <Text weight="bold">Submitted By:</Text>
+                <Text>{report.UserEmail}</Text>
+              </Box>
+              <Box direction="row" justify="between">
+                <Text weight="bold">Date & Time:</Text>
+                <Text>{format(new Date(report.Timestamp), 'PPp')}</Text>
+              </Box>
+              <Box direction="row" justify="between">
+                <Text weight="bold">Data Hall:</Text>
+                <Text>{report.ReportData.datahall}</Text>
+              </Box>
+              <Box direction="row" justify="between">
+                <Text weight="bold">Status:</Text>
+                <Box
+                  background={report.ReportData.isUrgent ? 'status-critical' : 'status-ok'}
+                  pad={{ horizontal: 'small', vertical: 'xsmall' }}
+                  round="small"
+                >
+                  <Text size="small">{report.ReportData.isUrgent ? 'Urgent' : 'Normal'}</Text>
+                </Box>
+              </Box>
+            </Box>
+          </CardBody>
+        </Card>
 
-          {/* Data Hall */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Data Hall
-            </label>
-            <select
-              value={filters.datahall}
-              onChange={(e) => setFilters(prev => ({ ...prev, datahall: e.target.value }))}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-            >
-              <option value="">All Data Halls</option>
-              <option value="Island 1">Island 1</option>
-              <option value="Island 8">Island 8</option>
-              <option value="Island 9">Island 9</option>
-              <option value="Island 10">Island 10</option>
-              <option value="Island 11">Island 11</option>
-              <option value="Island 12">Island 12</option>
-              <option value="Green Nitrogen">Green Nitrogen</option>
-            </select>
-          </div>
+        <Card background="light-1" pad="medium">
+          <CardHeader>
+            <Heading level={3} margin="none">
+              Environmental Readings
+            </Heading>
+          </CardHeader>
+          <CardBody>
+            <Box gap="medium" pad={{ vertical: 'small' }}>
+              <Box>
+                <Text weight="bold" margin={{ bottom: 'xsmall' }}>Temperature</Text>
+                <Box align="center" direction="row" gap="small">
+                  <Meter
+                    type="bar"
+                    background="light-2"
+                    values={[{
+                      value: temperatureValue,
+                      color: temperatureValue > 27 ? 'status-critical' :
+                             temperatureValue < 18 ? 'status-warning' : 'status-ok'
+                    }]}
+                    max={40}
+                    size="small"
+                  />
+                  <Text>{temperatureValue}°C</Text>
+                </Box>
+              </Box>
+              <Box>
+                <Text weight="bold" margin={{ bottom: 'xsmall' }}>Humidity</Text>
+                <Box align="center" direction="row" gap="small">
+                  <Meter
+                    type="bar"
+                    background="light-2"
+                    values={[{
+                      value: humidityValue,
+                      color: humidityValue > 70 ? 'status-critical' :
+                             humidityValue < 30 ? 'status-warning' : 'status-ok'
+                    }]}
+                    max={100}
+                    size="small"
+                  />
+                  <Text>{humidityValue}%</Text>
+                </Box>
+              </Box>
+            </Box>
+          </CardBody>
+        </Card>
+      </Grid>
 
-          {/* Part Type */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Part Type
-            </label>
-            <select
-              value={filters.part}
-              onChange={(e) => setFilters(prev => ({ ...prev, part: e.target.value }))}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-            >
-              <option value="">All Parts</option>
-              <option value="Power Supply Unit">Power Supply Unit</option>
-              <option value="Power Distribution Unit">Power Distribution Unit</option>
-              <option value="Rear Door Heat Exchanger">Rear Door Heat Exchanger</option>
-            </select>
-          </div>
+      <Card background="light-1" pad="medium" margin={{ bottom: 'medium' }}>
+        <CardHeader>
+          <Heading level={3} margin="none">
+            System Checks
+          </Heading>
+        </CardHeader>
+        <CardBody>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableCell scope="col">
+                  <Text weight="bold">Check Item</Text>
+                </TableCell>
+                <TableCell scope="col">
+                  <Text weight="bold">Status</Text>
+                </TableCell>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              <TableRow>
+                <TableCell>
+                  <Text>Security Systems</Text>
+                </TableCell>
+                <TableCell>
+                  <Box
+                    background={report.ReportData.securityPassed ? 'status-ok' : 'status-critical'}
+                    pad={{ horizontal: 'small', vertical: 'xsmall' }}
+                    round="small"
+                    width="fit-content"
+                  >
+                    <Text size="small">{report.ReportData.securityPassed ? 'PASSED' : 'FAILED'}</Text>
+                  </Box>
+                </TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell>
+                  <Text>Cooling System</Text>
+                </TableCell>
+                <TableCell>
+                  <Box
+                    background={report.ReportData.coolingSystemCheck ? 'status-ok' : 'status-critical'}
+                    pad={{ horizontal: 'small', vertical: 'xsmall' }}
+                    round="small"
+                    width="fit-content"
+                  >
+                    <Text size="small">{report.ReportData.coolingSystemCheck ? 'OPERATIONAL' : 'ISSUE DETECTED'}</Text>
+                  </Box>
+                </TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+        </CardBody>
+      </Card>
 
-          {/* Severity */}
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Severity
-            </label>
-            <select
-              value={filters.severity}
-              onChange={(e) => setFilters(prev => ({ ...prev, severity: e.target.value }))}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-            >
-              <option value="">All Severities</option>
-              <option value="Healthy">Healthy</option>
-              <option value="Warning">Warning</option>
-              <option value="Critical">Critical</option>
-            </select>
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-white rounded-lg shadow-sm p-6">
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-lg font-medium">Generated Reports</h2>
-          <div className="flex gap-4">
-            <button className="text-gray-600 hover:text-gray-900">
-              <FileDown className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="bg-gray-50">
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Report Name</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Generated On</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              <tr>
-                <td className="px-6 py-4 text-sm text-gray-500" colSpan={4}>
-                  No reports generated yet. Use the filters above to generate a new report.
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
+      {report.ReportData.comments && (
+        <Card background="light-1" pad="medium">
+          <CardHeader>
+            <Heading level={3} margin="none">
+              Additional Comments
+            </Heading>
+          </CardHeader>
+          <CardBody>
+            <Text>{report.ReportData.comments}</Text>
+          </CardBody>
+        </Card>
+      )}
+    </Box>
   );
 };
 
