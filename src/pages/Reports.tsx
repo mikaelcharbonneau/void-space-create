@@ -4,6 +4,8 @@ import { Search, Filter, FileDown, Calendar, Plus } from 'lucide-react';
 import { format } from 'date-fns';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../context/AuthContext';
+import DatePicker from 'react-datepicker';
+import "react-datepicker/dist/react-datepicker.css";
 
 interface Report {
   id: string;
@@ -22,17 +24,61 @@ const Reports = () => {
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
+  const [dateRange, setDateRange] = useState<[Date | null, Date | null]>([
+    new Date(new Date().setDate(new Date().getDate() - new Date().getDay())), // Start of current week
+    new Date(new Date().setDate(new Date().getDate() - new Date().getDay() + 6)) // End of current week
+  ]);
+  const [selectedDatacenter, setSelectedDatacenter] = useState('');
+  const [selectedDatahall, setSelectedDatahall] = useState('');
+  const [selectedStatus, setSelectedStatus] = useState('');
+
+  const datacenters = [
+    'Canada - Quebec',
+    'Norway - Enebakk',
+    'Norway - Rjukan',
+    'United States - Dallas',
+    'United States - Houston'
+  ];
+
+  const datahalls = {
+    'Canada - Quebec': ['Island 1', 'Island 8', 'Island 9', 'Island 10', 'Island 11', 'Island 12', 'Green Nitrogen'],
+    'Norway - Enebakk': ['Flying Whale'],
+    'Norway - Rjukan': ['Flying Whale'],
+    'United States - Dallas': ['Island 1', 'Island 2', 'Island 3', 'Island 4'],
+    'United States - Houston': ['H20 Lab']
+  };
 
   useEffect(() => {
     fetchReports();
-  }, []);
+  }, [dateRange, selectedDatacenter, selectedDatahall, selectedStatus]);
 
   const fetchReports = async () => {
     try {
-      const { data, error } = await supabase
+      setLoading(true);
+      let query = supabase
         .from('reports')
         .select('*')
         .order('created_at', { ascending: false });
+
+      if (dateRange[0] && dateRange[1]) {
+        query = query.gte('created_at', dateRange[0].toISOString())
+                    .lte('created_at', dateRange[1].toISOString());
+      }
+
+      if (selectedDatacenter) {
+        query = query.eq('location', selectedDatacenter);
+      }
+
+      if (selectedDatahall) {
+        query = query.eq('datahall', selectedDatahall);
+      }
+
+      if (selectedStatus) {
+        query = query.eq('status', selectedStatus);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       setReports(data || []);
@@ -45,6 +91,33 @@ const Reports = () => {
 
   const handleCreateReport = () => {
     navigate('/reports/new');
+  };
+
+  const handleGenerateReport = async () => {
+    try {
+      setLoading(true);
+      // Here you would typically call your report generation API
+      // For now, we'll just download the filtered data as JSON
+      const filteredData = reports.filter(report => {
+        const matchesSearch = report.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                            report.description.toLowerCase().includes(searchTerm.toLowerCase());
+        return matchesSearch;
+      });
+
+      const blob = new Blob([JSON.stringify(filteredData, null, 2)], { type: 'application/json' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `report-${format(new Date(), 'yyyy-MM-dd')}.json`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+    } catch (error) {
+      console.error('Error generating report:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -80,30 +153,119 @@ const Reports = () => {
           <h1 className="text-2xl font-semibold mb-2">Reports</h1>
           <p className="text-gray-600">View and manage your reports</p>
         </div>
-        <button
-          onClick={handleCreateReport}
-          className="bg-emerald-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-emerald-600 transition-colors"
-        >
-          <Plus className="w-5 h-5" />
-          Create Report
-        </button>
+        <div className="flex gap-4">
+          <button
+            onClick={handleGenerateReport}
+            disabled={loading}
+            className="bg-emerald-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-emerald-600 transition-colors"
+          >
+            <FileDown className="w-5 h-5" />
+            Generate Report
+          </button>
+          <button
+            onClick={handleCreateReport}
+            className="bg-emerald-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-emerald-600 transition-colors"
+          >
+            <Plus className="w-5 h-5" />
+            Create Report
+          </button>
+        </div>
       </div>
 
-      <div className="flex gap-4 mb-8">
-        <div className="flex-1 relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-          <input
-            type="text"
-            placeholder="Search reports..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg"
-          />
+      <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
+        <div className="flex flex-wrap gap-4 mb-6">
+          <div className="flex-1 min-w-[200px]">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Date Range
+            </label>
+            <div className="flex gap-4">
+              <DatePicker
+                selected={dateRange[0]}
+                onChange={(date) => setDateRange([date, dateRange[1]])}
+                selectsStart
+                startDate={dateRange[0]}
+                endDate={dateRange[1]}
+                className="w-full px-4 py-2 border border-gray-300 rounded-md"
+                placeholderText="Start Date"
+              />
+              <DatePicker
+                selected={dateRange[1]}
+                onChange={(date) => setDateRange([dateRange[0], date])}
+                selectsEnd
+                startDate={dateRange[0]}
+                endDate={dateRange[1]}
+                minDate={dateRange[0]}
+                className="w-full px-4 py-2 border border-gray-300 rounded-md"
+                placeholderText="End Date"
+              />
+            </div>
+          </div>
+
+          <div className="flex-1 min-w-[200px]">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Datacenter
+            </label>
+            <select
+              value={selectedDatacenter}
+              onChange={(e) => {
+                setSelectedDatacenter(e.target.value);
+                setSelectedDatahall('');
+              }}
+              className="w-full px-4 py-2 border border-gray-300 rounded-md"
+            >
+              <option value="">All Datacenters</option>
+              {datacenters.map(dc => (
+                <option key={dc} value={dc}>{dc}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex-1 min-w-[200px]">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Data Hall
+            </label>
+            <select
+              value={selectedDatahall}
+              onChange={(e) => setSelectedDatahall(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-md"
+              disabled={!selectedDatacenter}
+            >
+              <option value="">All Data Halls</option>
+              {selectedDatacenter && datahalls[selectedDatacenter as keyof typeof datahalls].map(hall => (
+                <option key={hall} value={hall}>{hall}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex-1 min-w-[200px]">
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Status
+            </label>
+            <select
+              value={selectedStatus}
+              onChange={(e) => setSelectedStatus(e.target.value)}
+              className="w-full px-4 py-2 border border-gray-300 rounded-md"
+            >
+              <option value="">All Statuses</option>
+              <option value="draft">Draft</option>
+              <option value="published">Published</option>
+              <option value="archived">Archived</option>
+            </select>
+          </div>
         </div>
-        <button className="border border-gray-200 rounded-lg px-4 py-2 flex items-center gap-2 hover:bg-gray-50">
-          <Filter className="w-5 h-5" />
-          Filters
-        </button>
+
+        <div className="flex gap-4">
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <input
+              type="text"
+              placeholder="Search reports..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md"
+            />
+          </div>
+        </div>
       </div>
 
       {loading ? (
@@ -116,9 +278,9 @@ const Reports = () => {
           <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
             <FileDown className="w-8 h-8 text-gray-400" />
           </div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No Reports Yet</h3>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">No Reports Found</h3>
           <p className="text-gray-600 mb-6">
-            Create your first report to get started
+            Try adjusting your filters or create a new report
           </p>
           <button
             onClick={handleCreateReport}
