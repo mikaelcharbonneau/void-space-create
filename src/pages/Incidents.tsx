@@ -1,5 +1,5 @@
-// File content updated to display new incident schema
-// (Previous content preserved, only showing relevant changes)
+import React from 'react';
+import { format } from 'date-fns';
 
 interface Issue {
   id: string;
@@ -17,36 +17,46 @@ interface Issue {
   report_id: string;
 }
 
-// Update table headers and row rendering
-<table>
-  <thead>
-    <tr>
-      <th>Datacenter</th>
-      <th>Data Hall</th>
-      <th>Rack</th>
-      <th>Part Type</th>
-      <th>Part ID</th>
-      <th>U Height</th>
-      <th>Status</th>
-      <th>Severity</th>
-      <th>Comments</th>
-      <th>Date</th>
-    </tr>
-  </thead>
-  <tbody>
-    {filteredIssues.map((issue) => (
-      <tr key={issue.id}>
-        <td>{issue.datacenter}</td>
-        <td>{issue.datahall}</td>
-        <td>{issue.rack_number}</td>
-        <td>{issue.part_type}</td>
-        <td>{issue.part_identifier}</td>
-        <td>{issue.u_height || '-'}</td>
-        <td>{issue.status}</td>
-        <td>{issue.severity}</td>
-        <td>{issue.comments || '-'}</td>
-        <td>{format(new Date(issue.reported_at), 'MMM d, yyyy')}</td>
-      </tr>
-    ))}
-  </tbody>
-</table>
+const Incidents: React.FC = () => {
+  // Using an empty array as placeholder since the actual data fetching logic isn't shown
+  const filteredIssues: Issue[] = [];
+
+  return (
+    <div className="p-6">
+      <table className="min-w-full divide-y divide-gray-200">
+        <thead className="bg-gray-50">
+          <tr>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Datacenter</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Data Hall</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rack</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Part Type</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Part ID</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">U Height</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Severity</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Comments</th>
+            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+          </tr>
+        </thead>
+        <tbody className="bg-white divide-y divide-gray-200">
+          {filteredIssues.map((issue) => (
+            <tr key={issue.id}>
+              <td className="px-6 py-4 whitespace-nowrap">{issue.datacenter}</td>
+              <td className="px-6 py-4 whitespace-nowrap">{issue.datahall}</td>
+              <td className="px-6 py-4 whitespace-nowrap">{issue.rack_number}</td>
+              <td className="px-6 py-4 whitespace-nowrap">{issue.part_type}</td>
+              <td className="px-6 py-4 whitespace-nowrap">{issue.part_identifier}</td>
+              <td className="px-6 py-4 whitespace-nowrap">{issue.u_height || '-'}</td>
+              <td className="px-6 py-4 whitespace-nowrap">{issue.status}</td>
+              <td className="px-6 py-4 whitespace-nowrap">{issue.severity}</td>
+              <td className="px-6 py-4 whitespace-nowrap">{issue.comments || '-'}</td>
+              <td className="px-6 py-4 whitespace-nowrap">{format(new Date(issue.reported_at), 'MMM d, yyyy')}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+};
+
+export default Incidents;
