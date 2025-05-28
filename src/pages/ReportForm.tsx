@@ -43,27 +43,47 @@ const ReportForm = () => {
     setLoading(true);
 
     try {
-      const { data, error } = await supabase
-        .from('AuditReports')
-        .insert([
-          {
-            UserEmail: user?.email,
-            user_full_name: user?.user_metadata?.full_name || user?.email,
-            ...formData,
-            ReportData: {
-              date_range: {
+      // Fetch incidents for the selected date range and location
+      const { data: incidents, error: incidentsError } = await supabase
+        .from('incidents')
+        .select('*')
+        .gte('created_at', dateRange[0]?.toISOString() || '')
+        .lte('created_at', dateRange[1]?.toISOString() || '')
+        .eq('location', formData.datacenter)
+        .eq('datahall', formData.datahall);
+
+      if (incidentsError) throw incidentsError;
+
+      // Create the report with incident data
+      const { data: report, error: reportError } = await supabase
+        .from('reports')
+        .insert([{
+          title: `Incident Report - ${formData.datacenter} - ${formData.datahall}`,
+          generated_by: user?.id,
+          date_range_start: dateRange[0]?.toISOString(),
+          date_range_end: dateRange[1]?.toISOString(),
+          datacenter: formData.datacenter,
+          datahall: formData.datahall,
+          status: incidents && incidents.length > 0 ? 'Warning' : 'Healthy',
+          total_incidents: incidents?.length || 0,
+          report_data: {
+            incidents: incidents || [],
+            filters: {
+              datacenter: formData.datacenter,
+              datahall: formData.datahall,
+              dateRange: {
                 start: dateRange[0]?.toISOString(),
                 end: dateRange[1]?.toISOString()
               }
             }
           }
-        ])
+        }])
         .select()
         .single();
 
-      if (error) throw error;
+      if (reportError) throw reportError;
 
-      navigate(`/reports/${data.Id}`);
+      navigate(`/reports/${report.data.id}`);
     } catch (error) {
       console.error('Error creating report:', error);
     } finally {
@@ -74,7 +94,6 @@ const ReportForm = () => {
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData(prev => {
-      // Reset datahall when datacenter changes
       if (name === 'datacenter') {
         return { ...prev, [name]: value, datahall: '' };
       }
@@ -163,39 +182,6 @@ const ReportForm = () => {
               </select>
             </div>
 
-            <div>
-              <label htmlFor="state" className="block text-sm font-medium text-gray-700 mb-1">
-                State *
-              </label>
-              <select
-                id="state"
-                name="state"
-                required
-                value={formData.state}
-                onChange={handleChange}
-                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-              >
-                <option value="Healthy">Healthy</option>
-                <option value="Warning">Warning</option>
-                <option value="Critical">Critical</option>
-              </select>
-            </div>
-
-            <div>
-              <label htmlFor="issues_reported" className="block text-sm font-medium text-gray-700 mb-1">
-                Issues Reported
-              </label>
-              <input
-                type="number"
-                id="issues_reported"
-                name="issues_reported"
-                value={formData.issues_reported}
-                onChange={handleChange}
-                min="0"
-                className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-              />
-            </div>
-
             <div className="flex justify-end gap-4">
               <button
                 type="button"
@@ -206,7 +192,7 @@ const ReportForm = () => {
               </button>
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || !dateRange[0] || !dateRange[1] || !formData.datacenter || !formData.datahall}
                 className="px-4 py-2 bg-emerald-500 text-white rounded-md hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? 'Generating...' : 'Generate Report'}
