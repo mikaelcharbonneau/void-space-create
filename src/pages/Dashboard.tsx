@@ -192,106 +192,104 @@ const Dashboard = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        {/* Recent Audits */}
-        <div>
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-medium">Recent Audits</h2>
-            <button
-              onClick={() => navigate('/inspections')}
-              className="text-emerald-500 hover:text-emerald-600"
-            >
-              View All
-            </button>
-          </div>
-          <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-            <table className="w-full">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Location</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {recentAudits.map((audit) => (
-                  <tr 
-                    key={audit.Id}
-                    className="hover:bg-gray-50 cursor-pointer"
-                    onClick={() => navigate(`/reports/${audit.Id}`)}
-                  >
-                    <td className="px-6 py-4 text-sm text-gray-900">#{audit.walkthrough_id}</td>
-                    <td className="px-6 py-4 text-sm text-gray-900">
-                      {audit.datacenter} - {audit.datahall}
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        audit.issues_reported === 0 
-                          ? 'bg-green-100 text-green-800'
-                          : audit.state === 'Critical'
-                            ? 'bg-red-100 text-red-800'
-                            : 'bg-yellow-100 text-yellow-800'
-                      }`}>
-                        {audit.issues_reported === 0 ? 'Healthy' : audit.state}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-500">
-                      {format(new Date(audit.Timestamp), 'MMM d, yyyy')}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+      {/* Recent Audits */}
+      <div className="mb-8">
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-medium">Recent Audits</h2>
+          <button
+            onClick={() => navigate('/inspections')}
+            className="text-emerald-500 hover:text-emerald-600"
+          >
+            View All
+          </button>
         </div>
-
-        {/* Recent Reports */}
-        <div>
-          <div className="flex justify-between items-center mb-4">
-            <h2 className="text-xl font-medium">Recent Reports</h2>
-            <button
-              onClick={() => navigate('/reports')}
-              className="text-emerald-500 hover:text-emerald-600"
-            >
-              View All
-            </button>
-          </div>
-          <div className="grid gap-6">
-            {reports && reports.length > 0 ? (
-              reports.map((report) => (
-                <div
-                  key={report.id}
-                  className="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer"
-                  onClick={() => navigate(`/reports/${report.id}`)}
+        <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+          <table className="w-full">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Location</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200">
+              {recentAudits.map((audit) => (
+                <tr 
+                  key={audit.Id}
+                  className="hover:bg-gray-50 cursor-pointer"
+                  onClick={() => navigate(`/reports/${audit.Id}`)}
                 >
-                  <div 
-                    className="relative h-48 bg-cover bg-center"
-                    style={{ 
-                      backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.7)), url(https://images.pexels.com/photos/325229/pexels-photo-325229.jpeg)`,
-                    }}
-                  >
-                    <div className="absolute inset-0 p-6 flex flex-col justify-end">
-                      <h3 className="text-xl font-medium text-white mb-2">
-                        {report.title}
-                      </h3>
-                      <p className="text-sm text-gray-200">{report.datacenter} - {report.datahall}</p>
-                    </div>
-                  </div>
-                  <div className="p-4 bg-white">
-                    <div className="flex justify-between items-center text-sm text-gray-600">
-                      <span>Issues: {report.total_incidents}</span>
-                      <span>{format(new Date(report.generated_at), 'MMM d, yyyy')}</span>
-                    </div>
+                  <td className="px-6 py-4 text-sm text-gray-900">#{audit.walkthrough_id}</td>
+                  <td className="px-6 py-4 text-sm text-gray-900">
+                    {audit.datacenter} - {audit.datahall}
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                      audit.issues_reported === 0 
+                        ? 'bg-green-100 text-green-800'
+                        : audit.state === 'Critical'
+                          ? 'bg-red-100 text-red-800'
+                          : 'bg-yellow-100 text-yellow-800'
+                    }`}>
+                      {audit.issues_reported === 0 ? 'Healthy' : audit.state}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-500">
+                    {format(new Date(audit.Timestamp), 'MMM d, yyyy')}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Recent Reports */}
+      <div>
+        <div className="flex justify-between items-center mb-4">
+          <h2 className="text-xl font-medium">Recent Reports</h2>
+          <button
+            onClick={() => navigate('/reports')}
+            className="text-emerald-500 hover:text-emerald-600"
+          >
+            View All
+          </button>
+        </div>
+        <div className="grid md:grid-cols-3 gap-6">
+          {reports && reports.length > 0 ? (
+            reports.map((report) => (
+              <div
+                key={report.id}
+                className="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+                onClick={() => navigate(`/reports/${report.id}`)}
+              >
+                <div 
+                  className="relative h-48 bg-cover bg-center"
+                  style={{ 
+                    backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.7)), url(https://images.pexels.com/photos/325229/pexels-photo-325229.jpeg)`,
+                  }}
+                >
+                  <div className="absolute inset-0 p-6 flex flex-col justify-end">
+                    <h3 className="text-xl font-medium text-white mb-2">
+                      {report.title}
+                    </h3>
+                    <p className="text-sm text-gray-200">{report.datacenter} - {report.datahall}</p>
                   </div>
                 </div>
-              ))
-            ) : (
-              <div className="text-center py-8 text-gray-500">
-                No reports found. Generate a new report to get started.
+                <div className="p-4 bg-white">
+                  <div className="flex justify-between items-center text-sm text-gray-600">
+                    <span>Issues: {report.total_incidents}</span>
+                    <span>{format(new Date(report.generated_at), 'MMM d, yyyy')}</span>
+                  </div>
+                </div>
               </div>
-            )}
-          </div>
+            ))
+          ) : (
+            <div className="col-span-3 text-center py-8 text-gray-500">
+              No reports found. Generate a new report to get started.
+            </div>
+          )}
         </div>
       </div>
     </div>
