@@ -6,6 +6,12 @@ import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../context/AuthContext';
 import { locations } from '../utils/locationMapping';
 
+interface DashboardStats {
+  completed: number;
+  active: number;
+  resolved: number;
+}
+
 interface Report {
   id: string;
   title: string;
@@ -22,12 +28,17 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [reports, setReports] = useState<Report[]>([]);
+  const [stats, setStats] = useState<DashboardStats>({
+    completed: 0,
+    active: 0,
+    resolved: 0
+  });
   const [loading, setLoading] = useState(true);
   const [showLocationDropdown, setShowLocationDropdown] = useState(false);
   const [userFullName, setUserFullName] = useState<string>('');
 
   useEffect(() => {
-    fetchReports();
+    fetchDashboardData();
     if (user) {
       fetchUserProfile();
     }
@@ -50,8 +61,11 @@ const Dashboard = () => {
     }
   };
 
-  const fetchReports = async () => {
+  const fetchDashboardData = async () => {
     try {
+      setLoading(true);
+      
+      // Fetch reports
       const { data: reportData, error: reportError } = await supabase
         .from('reports')
         .select('*')
@@ -60,17 +74,36 @@ const Dashboard = () => {
 
       if (reportError) throw reportError;
       setReports(reportData || []);
+
+      // Fetch statistics
+      const { data: auditData, error: auditError } = await supabase
+        .from('AuditReports')
+        .select('*');
+
+      if (auditError) throw auditError;
+
+      const { data: incidentData, error: incidentError } = await supabase
+        .from('incidents')
+        .select('*');
+
+      if (incidentError) throw incidentError;
+
+      // Calculate statistics
+      const completedAudits = auditData?.length || 0;
+      const activeIncidents = incidentData?.filter(i => i.status !== 'resolved')?.length || 0;
+      const resolvedIncidents = incidentData?.filter(i => i.status === 'resolved')?.length || 0;
+
+      setStats({
+        completed: completedAudits,
+        active: activeIncidents,
+        resolved: resolvedIncidents
+      });
+
     } catch (error) {
-      console.error('Error fetching reports:', error);
+      console.error('Error fetching dashboard data:', error);
     } finally {
       setLoading(false);
     }
-  };
-
-  const stats = {
-    completed: reports.length,
-    active: reports.filter(r => r.total_incidents > 0).length,
-    resolved: reports.filter(r => r.total_incidents === 0).length
   };
 
   const handleLocationSelect = (location: string) => {
@@ -117,16 +150,16 @@ const Dashboard = () => {
         <div className="bg-white rounded-lg p-6 shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <ClipboardList className="w-8 h-8 text-emerald-500" />
-            <span className="text-sm text-gray-500 cursor-pointer">View all</span>
+            <span className="text-sm text-gray-500 cursor-pointer" onClick={() => navigate('/inspections')}>View all</span>
           </div>
-          <h3 className="font-medium mb-2">Completed Reports</h3>
+          <h3 className="font-medium mb-2">Completed Audits</h3>
           <p className="text-3xl font-semibold">{stats.completed}</p>
         </div>
 
         <div className="bg-white rounded-lg p-6 shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <AlertTriangle className="w-8 h-8 text-amber-500" />
-            <span className="text-sm text-gray-500 cursor-pointer">View all</span>
+            <span className="text-sm text-gray-500 cursor-pointer" onClick={() => navigate('/incidents')}>View all</span>
           </div>
           <h3 className="font-medium mb-2">Active Issues</h3>
           <p className="text-3xl font-semibold">{stats.active}</p>
@@ -135,7 +168,7 @@ const Dashboard = () => {
         <div className="bg-white rounded-lg p-6 shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <CheckCircle className="w-8 h-8 text-slate-600" />
-            <span className="text-sm text-gray-500 cursor-pointer">View all</span>
+            <span className="text-sm text-gray-500 cursor-pointer" onClick={() => navigate('/incidents')}>View all</span>
           </div>
           <h3 className="font-medium mb-2">Resolved Issues</h3>
           <p className="text-3xl font-semibold">{stats.resolved}</p>
