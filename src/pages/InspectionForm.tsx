@@ -42,3 +42,5 @@ const createIncidentFromDevice = async (
       });
   }
 };
+
+export default createIncidentFromDevice
