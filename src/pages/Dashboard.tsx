@@ -109,13 +109,6 @@ const Dashboard = () => {
     resolved: inspections.filter(i => i.issues_reported === 0).length
   };
 
-  const handleLocationSelect = (location: string) => {
-    navigate('/inspection', { 
-      state: { selectedLocation: location }
-    });
-    setShowLocationDropdown(false);
-  };
-
   const getStatusColor = (total_incidents: number) => {
     if (total_incidents === 0) return 'bg-emerald-100 text-emerald-800';
     if (total_incidents > 5) return 'bg-red-100 text-red-800';
@@ -126,6 +119,13 @@ const Dashboard = () => {
     if (total_incidents === 0) return 'No Issues';
     if (total_incidents > 5) return 'Critical';
     return 'Warning';
+  };
+
+  const handleLocationSelect = (location: string) => {
+    navigate('/inspection', { 
+      state: { selectedLocation: location }
+    });
+    setShowLocationDropdown(false);
   };
 
   return (
@@ -192,7 +192,7 @@ const Dashboard = () => {
 
       <div className="mb-8">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-medium">Recent Inspections</h2>
+          <h2 className="text-xl font-medium">RECENT AUDITS</h2>
           <button
             onClick={() => navigate('/inspections')}
             className="text-emerald-500 hover:text-emerald-600"
