@@ -167,7 +167,7 @@ const Dashboard = () => {
               <tr className="bg-gray-50 border-b border-gray-200">
                 <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Datacenter</th>
                 <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Data Hall</th>
-                <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Issues Reported</th>
+                <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Incidents Reported</th>
                 <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">State</th>
                 <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Walkthrough ID</th>
                 <th className="text-left px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider">Technician</th>
