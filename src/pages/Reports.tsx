@@ -102,16 +102,6 @@ const Reports = () => {
 
         if (incidentError) throw incidentError;
         setIncidents(incidentData || []);
-
-        // Update total_incidents count in the report if it doesn't match
-        if (reportData.total_incidents !== incidentData?.length) {
-          const { error: updateError } = await supabase
-            .from('reports')
-            .update({ total_incidents: incidentData?.length || 0 })
-            .eq('id', reportId);
-
-          if (updateError) throw updateError;
-        }
       }
     } catch (error) {
       console.error('Error fetching report details:', error);
@@ -193,12 +183,7 @@ const Reports = () => {
               </div>
               <button
                 onClick={downloadCSV}
-                disabled={!incidents.length}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
-                  incidents.length 
-                    ? 'bg-emerald-500 text-white hover:bg-emerald-600'
-                    : 'bg-gray-200 text-gray-500 cursor-not-allowed'
-                }`}
+                className="flex items-center gap-2 px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors"
               >
                 <Download className="w-5 h-5" />
                 Download CSV
@@ -230,7 +215,7 @@ const Reports = () => {
                 <dl className="space-y-2">
                   <div>
                     <dt className="text-sm text-gray-500">Total Incidents</dt>
-                    <dd className="font-medium">{incidents.length}</dd>
+                    <dd className="font-medium">{selectedReport.total_incidents}</dd>
                   </div>
                   <div>
                     <dt className="text-sm text-gray-500">Status</dt>
@@ -241,76 +226,70 @@ const Reports = () => {
             </div>
 
             <h3 className="text-lg font-medium mb-4">Incidents</h3>
-            {incidents.length === 0 ? (
-              <div className="text-center py-8 bg-gray-50 rounded-lg">
-                <p className="text-gray-500">No incidents found for this report.</p>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rack</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Part</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Severity</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rack</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Part</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Severity</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {incidents.map((incident) => (
+                    <tr key={incident.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        {incident.rack_number}
+                        {incident.u_height && <span className="text-gray-500 ml-1">({incident.u_height})</span>}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        {incident.part_type} - {incident.part_identifier}
+                      </td>
+                      <td className="px-6 py-4 text-sm">
+                        <div className="max-w-md">
+                          <p className="line-clamp-2">{incident.description}</p>
+                          {incident.comments && (
+                            <p className="text-gray-500 mt-1 line-clamp-1">{incident.comments}</p>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          incident.severity === 'critical' 
+                            ? 'bg-red-100 text-red-800'
+                            : incident.severity === 'high'
+                            ? 'bg-orange-100 text-orange-800'
+                            : incident.severity === 'medium'
+                            ? 'bg-yellow-100 text-yellow-800'
+                            : 'bg-green-100 text-green-800'
+                        }`}>
+                          {incident.severity.charAt(0).toUpperCase() + incident.severity.slice(1)}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          incident.status === 'open'
+                            ? 'bg-red-100 text-red-800'
+                            : incident.status === 'in-progress'
+                            ? 'bg-yellow-100 text-yellow-800'
+                            : 'bg-green-100 text-green-800'
+                        }`}>
+                          {incident.status.split('-').map(word => 
+                            word.charAt(0).toUpperCase() + word.slice(1)
+                          ).join(' ')}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {format(new Date(incident.created_at), 'PP')}
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {incidents.map((incident) => (
-                      <tr key={incident.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">
-                          {incident.rack_number}
-                          {incident.u_height && <span className="text-gray-500 ml-1">({incident.u_height})</span>}
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm">
-                          {incident.part_type} - {incident.part_identifier}
-                        </td>
-                        <td className="px-6 py-4 text-sm">
-                          <div className="max-w-md">
-                            <p className="line-clamp-2">{incident.description}</p>
-                            {incident.comments && (
-                              <p className="text-gray-500 mt-1 line-clamp-1">{incident.comments}</p>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            incident.severity === 'critical' 
-                              ? 'bg-red-100 text-red-800'
-                              : incident.severity === 'high'
-                              ? 'bg-orange-100 text-orange-800'
-                              : incident.severity === 'medium'
-                              ? 'bg-yellow-100 text-yellow-800'
-                              : 'bg-green-100 text-green-800'
-                          }`}>
-                            {incident.severity.charAt(0).toUpperCase() + incident.severity.slice(1)}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                            incident.status === 'open'
-                              ? 'bg-red-100 text-red-800'
-                              : incident.status === 'in-progress'
-                              ? 'bg-yellow-100 text-yellow-800'
-                              : 'bg-green-100 text-green-800'
-                          }`}>
-                            {incident.status.split('-').map(word => 
-                              word.charAt(0).toUpperCase() + word.slice(1)
-                            ).join(' ')}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          {format(new Date(incident.created_at), 'PP')}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       </div>
