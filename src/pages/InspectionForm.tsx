@@ -39,9 +39,9 @@ interface RackForm {
 const psuStatusOptions = ['Amber LED', 'Powered-Off', 'Other'];
 const psuIdOptions = ['PSU 1', 'PSU 2', 'PSU 3', 'PSU 4', 'PSU 5', 'PSU 6'];
 const uHeightOptions = Array.from({ length: 49 }, (_, i) => `U${i}`);
-const pduStatusOptions = ['Healthy', 'Tripped Breaker', 'Powered-Off', 'Active Alarm', 'Other'];
+const pduStatusOptions = ['Tripped Breaker', 'Powered-Off', 'Active Alarm', 'Other'];
 const pduIdOptions = ['PDU A', 'PDU B', 'PDU C'];
-const rdhxStatusOptions = ['Healthy', 'Water Leak', 'Powered-Off', 'Active Alarm', 'Other'];
+const rdhxStatusOptions = ['Water Leak', 'Powered-Off', 'Active Alarm', 'Other'];
 
 const InspectionForm = () => {
   const location = useLocation();
