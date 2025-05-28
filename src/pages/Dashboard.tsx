@@ -207,9 +207,12 @@ const Dashboard = () => {
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Location</th>
-                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Datacenter</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Data Hall</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Issues Reported</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">State</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Walkthrough ID</th>
+                <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Technician</th>
                 <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
               </tr>
             </thead>
@@ -220,10 +223,9 @@ const Dashboard = () => {
                   className="hover:bg-gray-50 cursor-pointer"
                   onClick={() => navigate(`/reports/${audit.Id}`)}
                 >
-                  <td className="px-6 py-4 text-sm text-gray-900">#{audit.walkthrough_id}</td>
-                  <td className="px-6 py-4 text-sm text-gray-900">
-                    {audit.datacenter} - {audit.datahall}
-                  </td>
+                  <td className="px-6 py-4 text-sm text-gray-900">{audit.datacenter}</td>
+                  <td className="px-6 py-4 text-sm text-gray-900">{audit.datahall}</td>
+                  <td className="px-6 py-4 text-sm text-gray-900">{audit.issues_reported}</td>
                   <td className="px-6 py-4">
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
                       audit.issues_reported === 0 
@@ -235,6 +237,8 @@ const Dashboard = () => {
                       {audit.issues_reported === 0 ? 'Healthy' : audit.state}
                     </span>
                   </td>
+                  <td className="px-6 py-4 text-sm text-gray-900">#{audit.walkthrough_id}</td>
+                  <td className="px-6 py-4 text-sm text-gray-900">{audit.user_full_name}</td>
                   <td className="px-6 py-4 text-sm text-gray-500">
                     {format(new Date(audit.Timestamp), 'MMM d, yyyy')}
                   </td>
