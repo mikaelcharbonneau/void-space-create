@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Search, Filter, FileDown, Calendar, Plus } from 'lucide-react';
+import { useNavigate, useParams } from 'react-router-dom';
+import { Search, Filter, FileDown, Calendar, Plus, ArrowLeft, Download } from 'lucide-react';
 import { format } from 'date-fns';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../context/AuthContext';
@@ -21,40 +21,42 @@ interface Report {
   report_data: any;
 }
 
+interface Incident {
+  id: string;
+  location: string;
+  datahall: string;
+  rack_number: string;
+  part_type: string;
+  part_identifier: string;
+  u_height?: string;
+  severity: 'critical' | 'high' | 'medium' | 'low';
+  status: 'open' | 'in-progress' | 'resolved';
+  created_at: string;
+  description: string;
+  comments?: string;
+}
+
 const Reports = () => {
   const navigate = useNavigate();
+  const { id } = useParams();
   const { user } = useAuth();
   const [reports, setReports] = useState<Report[]>([]);
+  const [selectedReport, setSelectedReport] = useState<Report | null>(null);
+  const [incidents, setIncidents] = useState<Incident[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [dateRange, setDateRange] = useState<[Date | null, Date | null]>([
     new Date(new Date().setDate(new Date().getDate() - 7)), // Last 7 days
     new Date()
   ]);
-  const [selectedDatacenter, setSelectedDatacenter] = useState('');
-  const [selectedDatahall, setSelectedDatahall] = useState('');
-  const [selectedStatus, setSelectedStatus] = useState('');
-  const [generatingReport, setGeneratingReport] = useState(false);
-
-  const datacenters = [
-    'Canada - Quebec',
-    'Norway - Enebakk',
-    'Norway - Rjukan',
-    'United States - Dallas',
-    'United States - Houston'
-  ];
-
-  const datahalls = {
-    'Canada - Quebec': ['Island 1', 'Island 8', 'Island 9', 'Island 10', 'Island 11', 'Island 12', 'Green Nitrogen'],
-    'Norway - Enebakk': ['Flying Whale'],
-    'Norway - Rjukan': ['Flying Whale'],
-    'United States - Dallas': ['Island 1', 'Island 2', 'Island 3', 'Island 4'],
-    'United States - Houston': ['H20 Lab']
-  };
 
   useEffect(() => {
-    fetchReports();
-  }, []);
+    if (id) {
+      fetchReportDetails(id);
+    } else {
+      fetchReports();
+    }
+  }, [id]);
 
   const fetchReports = async () => {
     try {
@@ -73,91 +75,226 @@ const Reports = () => {
     }
   };
 
-  const handleCreateReport = () => {
-    navigate('/reports/new');
-  };
-
-  const handleGenerateReport = async () => {
-    if (!dateRange[0] || !dateRange[1]) {
-      alert('Please select a date range');
-      return;
-    }
-
+  const fetchReportDetails = async (reportId: string) => {
     try {
-      setGeneratingReport(true);
-
-      // Fetch incidents for the selected criteria
-      const { data: incidents, error: incidentsError } = await supabase
-        .from('incidents')
-        .select('*')
-        .gte('created_at', dateRange[0].toISOString())
-        .lte('created_at', dateRange[1].toISOString())
-        .order('created_at', { ascending: false });
-
-      if (incidentsError) throw incidentsError;
-
-      // Filter incidents by datacenter/datahall if selected
-      const filteredIncidents = incidents?.filter(incident => {
-        if (selectedDatacenter && incident.location !== selectedDatacenter) return false;
-        if (selectedDatahall && incident.datahall !== selectedDatahall) return false;
-        return true;
-      });
-
-      // Create new report
-      const { data: report, error: reportError } = await supabase
+      setLoading(true);
+      
+      // Fetch report details
+      const { data: reportData, error: reportError } = await supabase
         .from('reports')
-        .insert([{
-          title: `Incident Report - ${format(dateRange[0], 'MMM d, yyyy')} to ${format(dateRange[1], 'MMM d, yyyy')}`,
-          generated_by: user?.id,
-          date_range_start: dateRange[0].toISOString(),
-          date_range_end: dateRange[1].toISOString(),
-          datacenter: selectedDatacenter || 'All Locations',
-          datahall: selectedDatahall || 'All Data Halls',
-          status: 'generated',
-          total_incidents: filteredIncidents?.length || 0,
-          report_data: {
-            incidents: filteredIncidents,
-            filters: {
-              datacenter: selectedDatacenter,
-              datahall: selectedDatahall,
-              status: selectedStatus
-            },
-            generated_at: new Date().toISOString(),
-            generated_by: user?.email
-          }
-        }])
-        .select()
+        .select('*')
+        .eq('id', reportId)
         .single();
 
       if (reportError) throw reportError;
+      setSelectedReport(reportData);
 
-      // Navigate to the new report
-      navigate(`/reports/${report.id}`);
+      // Fetch related incidents
+      if (reportData) {
+        const { data: incidentData, error: incidentError } = await supabase
+          .from('incidents')
+          .select('*')
+          .gte('created_at', reportData.date_range_start)
+          .lte('created_at', reportData.date_range_end)
+          .eq('location', reportData.datacenter)
+          .eq('datahall', reportData.datahall)
+          .order('created_at', { ascending: false });
+
+        if (incidentError) throw incidentError;
+        setIncidents(incidentData || []);
+      }
     } catch (error) {
-      console.error('Error generating report:', error);
-      alert('Failed to generate report. Please try again.');
+      console.error('Error fetching report details:', error);
     } finally {
-      setGeneratingReport(false);
+      setLoading(false);
     }
   };
 
-  const getStatusColor = (total_incidents: number) => {
-    if (total_incidents === 0) return 'bg-emerald-100 text-emerald-800';
-    if (total_incidents > 5) return 'bg-red-100 text-red-800';
-    return 'bg-amber-100 text-amber-800';
+  const downloadCSV = () => {
+    if (!incidents.length) return;
+
+    const headers = [
+      'ID',
+      'Location',
+      'Data Hall',
+      'Rack Number',
+      'Part Type',
+      'Part ID',
+      'U-Height',
+      'Severity',
+      'Status',
+      'Created At',
+      'Description',
+      'Comments'
+    ];
+
+    const csvContent = [
+      headers.join(','),
+      ...incidents.map(incident => [
+        incident.id,
+        incident.location,
+        incident.datahall,
+        incident.rack_number,
+        incident.part_type,
+        incident.part_identifier,
+        incident.u_height || '',
+        incident.severity,
+        incident.status,
+        format(new Date(incident.created_at), 'yyyy-MM-dd HH:mm:ss'),
+        `"${incident.description.replace(/"/g, '""')}"`,
+        `"${incident.comments?.replace(/"/g, '""') || ''}"`,
+      ].join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `report_${selectedReport?.id}_incidents.csv`;
+    link.click();
   };
 
-  const getStatusText = (total_incidents: number) => {
-    if (total_incidents === 0) return 'No Issues';
-    if (total_incidents > 5) return 'Critical';
-    return 'Warning';
-  };
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500"></div>
+      </div>
+    );
+  }
 
-  const filteredReports = reports.filter(report =>
-    report.datacenter.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    report.datahall.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    report.title.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  if (id && selectedReport) {
+    return (
+      <div className="p-6">
+        <div className="max-w-6xl mx-auto">
+          <button
+            onClick={() => navigate('/reports')}
+            className="flex items-center text-gray-600 hover:text-gray-900 mb-6"
+          >
+            <ArrowLeft className="w-5 h-5 mr-2" />
+            Back to Reports
+          </button>
+
+          <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+            <div className="flex justify-between items-start mb-6">
+              <div>
+                <h1 className="text-2xl font-semibold mb-2">{selectedReport.title}</h1>
+                <p className="text-gray-600">
+                  {format(new Date(selectedReport.generated_at), 'PPpp')}
+                </p>
+              </div>
+              <button
+                onClick={downloadCSV}
+                className="flex items-center gap-2 px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors"
+              >
+                <Download className="w-5 h-5" />
+                Download CSV
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-6 mb-8">
+              <div>
+                <h3 className="text-lg font-medium mb-4">Report Details</h3>
+                <dl className="space-y-2">
+                  <div>
+                    <dt className="text-sm text-gray-500">Datacenter</dt>
+                    <dd className="font-medium">{selectedReport.datacenter}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-sm text-gray-500">Data Hall</dt>
+                    <dd className="font-medium">{selectedReport.datahall}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-sm text-gray-500">Date Range</dt>
+                    <dd className="font-medium">
+                      {format(new Date(selectedReport.date_range_start), 'PP')} - {format(new Date(selectedReport.date_range_end), 'PP')}
+                    </dd>
+                  </div>
+                </dl>
+              </div>
+              <div>
+                <h3 className="text-lg font-medium mb-4">Statistics</h3>
+                <dl className="space-y-2">
+                  <div>
+                    <dt className="text-sm text-gray-500">Total Incidents</dt>
+                    <dd className="font-medium">{selectedReport.total_incidents}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-sm text-gray-500">Status</dt>
+                    <dd className="font-medium">{selectedReport.status}</dd>
+                  </div>
+                </dl>
+              </div>
+            </div>
+
+            <h3 className="text-lg font-medium mb-4">Incidents</h3>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Rack</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Part</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Description</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Severity</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {incidents.map((incident) => (
+                    <tr key={incident.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        {incident.rack_number}
+                        {incident.u_height && <span className="text-gray-500 ml-1">({incident.u_height})</span>}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm">
+                        {incident.part_type} - {incident.part_identifier}
+                      </td>
+                      <td className="px-6 py-4 text-sm">
+                        <div className="max-w-md">
+                          <p className="line-clamp-2">{incident.description}</p>
+                          {incident.comments && (
+                            <p className="text-gray-500 mt-1 line-clamp-1">{incident.comments}</p>
+                          )}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          incident.severity === 'critical' 
+                            ? 'bg-red-100 text-red-800'
+                            : incident.severity === 'high'
+                            ? 'bg-orange-100 text-orange-800'
+                            : incident.severity === 'medium'
+                            ? 'bg-yellow-100 text-yellow-800'
+                            : 'bg-green-100 text-green-800'
+                        }`}>
+                          {incident.severity.charAt(0).toUpperCase() + incident.severity.slice(1)}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                          incident.status === 'open'
+                            ? 'bg-red-100 text-red-800'
+                            : incident.status === 'in-progress'
+                            ? 'bg-yellow-100 text-yellow-800'
+                            : 'bg-green-100 text-green-800'
+                        }`}>
+                          {incident.status.split('-').map(word => 
+                            word.charAt(0).toUpperCase() + word.slice(1)
+                          ).join(' ')}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {format(new Date(incident.created_at), 'PP')}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6">
@@ -167,172 +304,45 @@ const Reports = () => {
           <p className="text-gray-600">Generate and view incident reports</p>
         </div>
         <button
-          onClick={handleGenerateReport}
-          disabled={generatingReport}
-          className="bg-emerald-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-emerald-600 transition-colors disabled:opacity-50"
+          onClick={() => navigate('/reports/new')}
+          className="flex items-center gap-2 px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors"
         >
-          <FileDown className="w-5 h-5" />
-          {generatingReport ? 'Generating...' : 'Generate Report'}
+          <Plus className="w-5 h-5" />
+          New Report
         </button>
       </div>
 
-      <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
-        <h2 className="text-lg font-medium mb-4">Report Filters</h2>
-        <div className="flex flex-wrap gap-4 mb-6">
-          <div className="flex-1 min-w-[200px]">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Date Range
-            </label>
-            <div className="flex gap-4">
-              <DatePicker
-                selected={dateRange[0]}
-                onChange={(date) => setDateRange([date, dateRange[1]])}
-                selectsStart
-                startDate={dateRange[0]}
-                endDate={dateRange[1]}
-                className="w-full px-4 py-2 border border-gray-300 rounded-md"
-                placeholderText="Start Date"
-              />
-              <DatePicker
-                selected={dateRange[1]}
-                onChange={(date) => setDateRange([dateRange[0], date])}
-                selectsEnd
-                startDate={dateRange[0]}
-                endDate={dateRange[1]}
-                minDate={dateRange[0]}
-                className="w-full px-4 py-2 border border-gray-300 rounded-md"
-                placeholderText="End Date"
-              />
-            </div>
-          </div>
-
-          <div className="flex-1 min-w-[200px]">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Datacenter
-            </label>
-            <select
-              value={selectedDatacenter}
-              onChange={(e) => {
-                setSelectedDatacenter(e.target.value);
-                setSelectedDatahall('');
-              }}
-              className="w-full px-4 py-2 border border-gray-300 rounded-md"
-            >
-              <option value="">All Datacenters</option>
-              {datacenters.map(dc => (
-                <option key={dc} value={dc}>{dc}</option>
-              ))}
-            </select>
-          </div>
-
-          <div className="flex-1 min-w-[200px]">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Data Hall
-            </label>
-            <select
-              value={selectedDatahall}
-              onChange={(e) => setSelectedDatahall(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-md"
-              disabled={!selectedDatacenter}
-            >
-              <option value="">All Data Halls</option>
-              {selectedDatacenter && datahalls[selectedDatacenter as keyof typeof datahalls].map(hall => (
-                <option key={hall} value={hall}>{hall}</option>
-              ))}
-            </select>
-          </div>
-
-          <div className="flex-1 min-w-[200px]">
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Status
-            </label>
-            <select
-              value={selectedStatus}
-              onChange={(e) => setSelectedStatus(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 rounded-md"
-            >
-              <option value="">All Statuses</option>
-              <option value="open">Open</option>
-              <option value="in-progress">In Progress</option>
-              <option value="resolved">Resolved</option>
-            </select>
-          </div>
-        </div>
-
-        <div className="flex gap-4">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-            <input
-              type="text"
-              placeholder="Search reports..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-md"
-            />
-          </div>
-        </div>
-      </div>
-
-      {loading ? (
-        <div className="text-center py-12">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading reports...</p>
-        </div>
-      ) : filteredReports.length === 0 ? (
-        <div className="text-center py-12 bg-white rounded-lg shadow-sm">
-          <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <FileDown className="w-8 h-8 text-gray-400" />
-          </div>
-          <h3 className="text-lg font-medium text-gray-900 mb-2">No Reports Found</h3>
-          <p className="text-gray-600 mb-6">
-            Generate a new report using the filters above
-          </p>
-          <button
-            onClick={handleGenerateReport}
-            disabled={generatingReport}
-            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-emerald-500 hover:bg-emerald-600 transition-colors disabled:opacity-50"
+      <div className="grid md:grid-cols-3 gap-6">
+        {reports.map((report) => (
+          <div
+            key={report.id}
+            className="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+            onClick={() => navigate(`/reports/${report.id}`)}
           >
-            <FileDown className="w-5 h-5 mr-2" />
-            Generate Report
-          </button>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredReports.map((report) => (
-            <div
-              key={report.id}
-              className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow cursor-pointer"
-              onClick={() => navigate(`/reports/${report.id}`)}
+            <div 
+              className="relative h-48 bg-cover bg-center"
+              style={{ 
+                backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.7)), url(https://images.pexels.com/photos/325229/pexels-photo-325229.jpeg)`,
+              }}
             >
-              <div className="p-6">
-                <div className="flex items-start justify-between mb-4">
-                  <div>
-                    <h3 className="text-lg font-medium text-gray-900 mb-1">
-                      {report.title}
-                    </h3>
-                    <p className="text-sm text-gray-600">{report.datacenter}</p>
-                    {report.datahall && (
-                      <p className="text-sm text-gray-600">{report.datahall}</p>
-                    )}
-                  </div>
-                  <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${getStatusColor(report.total_incidents)}`}>
-                    {getStatusText(report.total_incidents)}
-                  </span>
-                </div>
-                <p className="text-gray-600 text-sm mb-4">
-                  {`Total Incidents: ${report.total_incidents}`}
-                </p>
-                <div className="flex items-center text-sm text-gray-500">
-                  <Calendar className="w-4 h-4 mr-2" />
-                  {format(new Date(report.generated_at), 'MMM d, yyyy')}
-                </div>
+              <div className="absolute inset-0 p-6 flex flex-col justify-end">
+                <h3 className="text-xl font-medium text-white mb-2">
+                  {report.title}
+                </h3>
+                <p className="text-sm text-gray-200">{report.datacenter} - {report.datahall}</p>
               </div>
             </div>
-          ))}
-        </div>
-      )}
+            <div className="p-4 bg-white border-t border-gray-100">
+              <div className="flex justify-between items-center text-sm text-gray-600">
+                <span>Issues: {report.total_incidents}</span>
+                <span>{format(new Date(report.generated_at), 'MMM d, yyyy')}</span>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
-}
+};
 
-export default Reports
+export default Reports;
