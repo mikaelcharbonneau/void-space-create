@@ -19,6 +19,7 @@ interface Incident {
   description: string;
   comments?: string;
   user_id: string;
+  walkthrough_id: number;
 }
 
 const IncidentDetails = () => {
@@ -51,6 +52,13 @@ const IncidentDetails = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const formatIncidentId = (incident: Incident) => {
+    const walkthrough = `A${incident.walkthrough_id}`;
+    const rack = incident.rack_number.replace(/[^0-9]/g, '');
+    const partId = incident.part_identifier.replace(/\s+/g, '').toUpperCase();
+    return `${walkthrough}-${rack}-${partId}`;
   };
 
   if (loading) {
@@ -127,7 +135,7 @@ const IncidentDetails = () => {
                     incident.severity === 'medium' ? 'text-yellow-500' :
                     'text-green-500'
                   }`} />
-                  <h1 className="text-2xl font-semibold">Incident #{incident.id.substring(0, 8)}</h1>
+                  <h1 className="text-2xl font-semibold">Incident {formatIncidentId(incident)}</h1>
                 </div>
                 <div className="flex items-center text-gray-600 gap-4">
                   <div className="flex items-center">
