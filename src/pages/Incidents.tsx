@@ -6,22 +6,24 @@ import { supabase } from '../lib/supabaseClient';
 import DatePicker from 'react-datepicker';
 import "react-datepicker/dist/react-datepicker.css";
 
-interface Issue {
+interface Incident {
   id: string;
-  datacenter: string;
+  location: string;
   datahall: string;
-  part: string;
-  issue: string;
-  reported_by: string;
-  reported_at: string;
-  report_id: string;
+  rack_number: string;
+  part_type: string;
+  part_identifier: string;
+  u_height?: string;
   severity: 'critical' | 'high' | 'medium' | 'low';
   status: 'open' | 'in-progress' | 'resolved';
+  created_at: string;
+  description: string;
+  comments?: string;
 }
 
 const Incidents = () => {
   const navigate = useNavigate();
-  const [issues, setIssues] = useState<Issue[]>([]);
+  const [incidents, setIncidents] = useState<Incident[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [showFilters, setShowFilters] = useState(false);
@@ -48,10 +50,10 @@ const Incidents = () => {
   };
 
   useEffect(() => {
-    fetchIssues();
+    fetchIncidents();
   }, []);
 
-  const fetchIssues = async () => {
+  const fetchIncidents = async () => {
     try {
       const { data, error } = await supabase
         .from('incidents')
@@ -59,54 +61,48 @@ const Incidents = () => {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      setIssues(data || []);
+      setIncidents(data || []);
     } catch (error) {
-      console.error('Error fetching issues:', error);
+      console.error('Error fetching incidents:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const applyFilters = (issue: Issue) => {
-    // Search term filter
-    if (searchTerm && !issue.description?.toLowerCase().includes(searchTerm.toLowerCase()) &&
-        !issue.location?.toLowerCase().includes(searchTerm.toLowerCase()) &&
-        !issue.datahall?.toLowerCase().includes(searchTerm.toLowerCase())) {
+  const applyFilters = (incident: Incident) => {
+    if (searchTerm && !incident.description?.toLowerCase().includes(searchTerm.toLowerCase()) &&
+        !incident.location?.toLowerCase().includes(searchTerm.toLowerCase()) &&
+        !incident.datahall?.toLowerCase().includes(searchTerm.toLowerCase())) {
       return false;
     }
 
-    // Date range filter
     if (dateRange[0] && dateRange[1]) {
-      const issueDate = new Date(issue.created_at);
-      if (issueDate < dateRange[0] || issueDate > dateRange[1]) {
+      const incidentDate = new Date(incident.created_at);
+      if (incidentDate < dateRange[0] || incidentDate > dateRange[1]) {
         return false;
       }
     }
 
-    // Datacenter filter
-    if (selectedDatacenter && issue.location !== selectedDatacenter) {
+    if (selectedDatacenter && incident.location !== selectedDatacenter) {
       return false;
     }
 
-    // Data hall filter
-    if (selectedDatahall && issue.datahall !== selectedDatahall) {
+    if (selectedDatahall && incident.datahall !== selectedDatahall) {
       return false;
     }
 
-    // Severity filter
-    if (selectedSeverity && issue.severity !== selectedSeverity) {
+    if (selectedSeverity && incident.severity !== selectedSeverity) {
       return false;
     }
 
-    // Status filter
-    if (selectedStatus && issue.status !== selectedStatus) {
+    if (selectedStatus && incident.status !== selectedStatus) {
       return false;
     }
 
     return true;
   };
 
-  const filteredIssues = issues.filter(applyFilters);
+  const filteredIncidents = incidents.filter(applyFilters);
 
   return (
     <div className="p-6">
@@ -273,50 +269,50 @@ const Incidents = () => {
                     Loading issues...
                   </td>
                 </tr>
-              ) : filteredIssues.length === 0 ? (
+              ) : filteredIncidents.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="px-6 py-4 text-center text-gray-500">
                     No issues found
                   </td>
                 </tr>
               ) : (
-                filteredIssues.map((issue) => (
+                filteredIncidents.map((incident) => (
                   <tr 
-                    key={issue.id}
+                    key={incident.id}
                     className="hover:bg-gray-50 cursor-pointer"
-                    onClick={() => navigate(`/reports/${issue.report_id}`)}
+                    onClick={() => navigate(`/incidents/${incident.id}`)}
                   >
-                    <td className="px-6 py-4 text-sm text-gray-900">{issue.location}</td>
-                    <td className="px-6 py-4 text-sm text-gray-900">{issue.datahall}</td>
-                    <td className="px-6 py-4 text-sm text-gray-900">{issue.description}</td>
+                    <td className="px-6 py-4 text-sm text-gray-900">{incident.location}</td>
+                    <td className="px-6 py-4 text-sm text-gray-900">{incident.datahall}</td>
+                    <td className="px-6 py-4 text-sm text-gray-900">{incident.description}</td>
                     <td className="px-6 py-4 text-sm">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        issue.severity === 'critical' 
+                        incident.severity === 'critical' 
                           ? 'bg-red-100 text-red-800'
-                          : issue.severity === 'high'
+                          : incident.severity === 'high'
                           ? 'bg-orange-100 text-orange-800'
-                          : issue.severity === 'medium'
+                          : incident.severity === 'medium'
                           ? 'bg-yellow-100 text-yellow-800'
                           : 'bg-green-100 text-green-800'
                       }`}>
-                        {issue.severity.charAt(0).toUpperCase() + issue.severity.slice(1)}
+                        {incident.severity.charAt(0).toUpperCase() + incident.severity.slice(1)}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm">
                       <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                        issue.status === 'open'
+                        incident.status === 'open'
                           ? 'bg-red-100 text-red-800'
-                          : issue.status === 'in-progress'
+                          : incident.status === 'in-progress'
                           ? 'bg-yellow-100 text-yellow-800'
                           : 'bg-green-100 text-green-800'
                       }`}>
-                        {issue.status.split('-').map(word => 
+                        {incident.status.split('-').map(word => 
                           word.charAt(0).toUpperCase() + word.slice(1)
                         ).join(' ')}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-900">
-                      {format(new Date(issue.created_at), 'MMM d, yyyy')}
+                      {format(new Date(incident.created_at), 'MMM d, yyyy')}
                     </td>
                   </tr>
                 ))
