@@ -56,7 +56,7 @@ const Header = () => {
             color="text-strong" 
             size="medium"
           >
-            Walkthrough App
+            Datacenter Audits
           </Text>
         </Box>
 
