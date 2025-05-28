@@ -152,7 +152,7 @@ const InspectionForm = () => {
       const { data, error } = await supabase
         .from('AuditReports')
         .insert([{
-          UserEmail: user?.email,
+          GeneratedBy: user?.email,
           datacenter: selectedLocation,
           datahall: selectedDataHall,
           issues_reported: hasIssues ? racks.length : 0,
