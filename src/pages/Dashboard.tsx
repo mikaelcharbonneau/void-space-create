@@ -161,7 +161,7 @@ const Dashboard = () => {
             <AlertTriangle className="w-8 h-8 text-amber-500" />
             <span className="text-sm text-gray-500 cursor-pointer" onClick={() => navigate('/incidents')}>View all</span>
           </div>
-          <h3 className="font-medium mb-2">Active Issues</h3>
+          <h3 className="font-medium mb-2">Active Incidents</h3>
           <p className="text-3xl font-semibold">{stats.active}</p>
         </div>
 
@@ -186,33 +186,39 @@ const Dashboard = () => {
           </button>
         </div>
         <div className="grid md:grid-cols-3 gap-6">
-          {reports.map((report) => (
-            <div
-              key={report.id}
-              className="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer"
-              onClick={() => navigate(`/reports/${report.id}`)}
-            >
-              <div 
-                className="relative h-48 bg-cover bg-center"
-                style={{ 
-                  backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.7)), url(https://images.pexels.com/photos/325229/pexels-photo-325229.jpeg)`,
-                }}
+          {reports && reports.length > 0 ? (
+            reports.map((report) => (
+              <div
+                key={report.id}
+                className="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+                onClick={() => navigate(`/reports/${report.id}`)}
               >
-                <div className="absolute inset-0 p-6 flex flex-col justify-end">
-                  <h3 className="text-xl font-medium text-white mb-2">
-                    {report.title}
-                  </h3>
-                  <p className="text-sm text-gray-200">{report.datacenter} - {report.datahall}</p>
+                <div 
+                  className="relative h-48 bg-cover bg-center"
+                  style={{ 
+                    backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.7)), url(https://images.pexels.com/photos/325229/pexels-photo-325229.jpeg)`,
+                  }}
+                >
+                  <div className="absolute inset-0 p-6 flex flex-col justify-end">
+                    <h3 className="text-xl font-medium text-white mb-2">
+                      {report.title}
+                    </h3>
+                    <p className="text-sm text-gray-200">{report.datacenter} - {report.datahall}</p>
+                  </div>
+                </div>
+                <div className="p-4 bg-white">
+                  <div className="flex justify-between items-center text-sm text-gray-600">
+                    <span>Issues: {report.total_incidents}</span>
+                    <span>{format(new Date(report.generated_at), 'MMM d, yyyy')}</span>
+                  </div>
                 </div>
               </div>
-              <div className="p-4 bg-white border-t border-gray-100">
-                <div className="flex justify-between items-center text-sm text-gray-600">
-                  <span>Issues: {report.total_incidents}</span>
-                  <span>{format(new Date(report.generated_at), 'MMM d, yyyy')}</span>
-                </div>
-              </div>
+            ))
+          ) : (
+            <div className="col-span-3 text-center py-8 text-gray-500">
+              No reports found. Generate a new report to get started.
             </div>
-          ))}
+          )}
         </div>
       </div>
     </div>
