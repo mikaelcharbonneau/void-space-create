@@ -170,7 +170,7 @@ const Dashboard = () => {
             <CheckCircle className="w-8 h-8 text-slate-600" />
             <span className="text-sm text-gray-500 cursor-pointer" onClick={() => navigate('/incidents')}>View all</span>
           </div>
-          <h3 className="font-medium mb-2">Resolved Issues</h3>
+          <h3 className="font-medium mb-2">Resolved Incidents</h3>
           <p className="text-3xl font-semibold">{stats.resolved}</p>
         </div>
       </div>
