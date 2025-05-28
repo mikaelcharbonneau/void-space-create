@@ -93,6 +93,7 @@ const Reports = () => {
       setReports(data || []);
     } catch (error) {
       console.error('Error fetching reports:', error);
+      setReports([]); // Set empty array on error
     } finally {
       setLoading(false);
     }
@@ -135,6 +136,7 @@ const Reports = () => {
       }
     } catch (error) {
       console.error('Error fetching report details:', error);
+      setIncidents([]); // Set empty array on error
     } finally {
       setLoading(false);
     }
@@ -465,7 +467,7 @@ const Reports = () => {
               disabled={!selectedDatacenter}
             >
               <option value="">Select Data Hall</option>
-              {selectedDatacenter && datahalls[selectedDatacenter as keyof typeof datahalls].map(hall => (
+              {selectedDatacenter && datahalls[selectedDatacenter as keyof typeof datahalls]?.map(hall => (
                 <option key={hall} value={hall}>{hall}</option>
               ))}
             </select>
@@ -511,33 +513,39 @@ const Reports = () => {
       <div className="bg-white rounded-lg shadow-sm p-6">
         <h2 className="text-lg font-medium mb-6">Recent Reports</h2>
         <div className="grid md:grid-cols-3 gap-6">
-          {reports.map((report) => (
-            <div
-              key={report.id}
-              className="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer border border-gray-100"
-              onClick={() => navigate(`/reports/${report.id}`)}
-            >
-              <div 
-                className="relative h-48 bg-cover bg-center"
-                style={{ 
-                  backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.7)), url(https://images.pexels.com/photos/325229/pexels-photo-325229.jpeg)`,
-                }}
+          {reports && reports.length > 0 ? (
+            reports.map((report) => (
+              <div
+                key={report.id}
+                className="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer border border-gray-100"
+                onClick={() => navigate(`/reports/${report.id}`)}
               >
-                <div className="absolute inset-0 p-6 flex flex-col justify-end">
-                  <h3 className="text-xl font-medium text-white mb-2">
-                    {report.title}
-                  </h3>
-                  <p className="text-sm text-gray-200">{report.datacenter} - {report.datahall}</p>
+                <div 
+                  className="relative h-48 bg-cover bg-center"
+                  style={{ 
+                    backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.7)), url(https://images.pexels.com/photos/325229/pexels-photo-325229.jpeg)`,
+                  }}
+                >
+                  <div className="absolute inset-0 p-6 flex flex-col justify-end">
+                    <h3 className="text-xl font-medium text-white mb-2">
+                      {report.title}
+                    </h3>
+                    <p className="text-sm text-gray-200">{report.datacenter} - {report.datahall}</p>
+                  </div>
+                </div>
+                <div className="p-4 bg-white">
+                  <div className="flex justify-between items-center text-sm text-gray-600">
+                    <span>Issues: {report.total_incidents}</span>
+                    <span>{format(new Date(report.generated_at), 'MMM d, yyyy')}</span>
+                  </div>
                 </div>
               </div>
-              <div className="p-4 bg-white">
-                <div className="flex justify-between items-center text-sm text-gray-600">
-                  <span>Issues: {report.total_incidents}</span>
-                  <span>{format(new Date(report.generated_at), 'MMM d, yyyy')}</span>
-                </div>
-              </div>
+            ))
+          ) : (
+            <div className="col-span-3 text-center py-8 text-gray-500">
+              No reports found. Generate a new report to get started.
             </div>
-          ))}
+          )}
         </div>
       </div>
     </div>
