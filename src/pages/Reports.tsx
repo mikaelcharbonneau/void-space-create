@@ -93,7 +93,7 @@ const Reports = () => {
       setReports(data || []);
     } catch (error) {
       console.error('Error fetching reports:', error);
-      setReports([]); // Set empty array on error
+      setReports([]);
     } finally {
       setLoading(false);
     }
@@ -136,7 +136,7 @@ const Reports = () => {
       }
     } catch (error) {
       console.error('Error fetching report details:', error);
-      setIncidents([]); // Set empty array on error
+      setIncidents([]);
     } finally {
       setLoading(false);
     }
@@ -209,7 +209,7 @@ const Reports = () => {
       if (reportError) throw reportError;
 
       // Navigate to the new report
-      navigate(`/reports/${report.id}`);
+      navigate(`/reports/${report.data.id}`);
     } catch (error) {
       console.error('Error generating report:', error);
       alert('Failed to generate report. Please try again.');
@@ -464,10 +464,10 @@ const Reports = () => {
               value={selectedDatahall}
               onChange={(e) => setSelectedDatahall(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md"
-              disabled={!selectedDatacenter}
+              disabled={!selectedDatacenter || selectedDatacenter === 'All Datacenters'}
             >
               <option value="">Select Data Hall</option>
-              {selectedDatacenter && datahalls[selectedDatacenter as keyof typeof datahalls]?.map(hall => (
+              {selectedDatacenter && selectedDatacenter !== 'All Datacenters' && datahalls[selectedDatacenter as keyof typeof datahalls]?.map(hall => (
                 <option key={hall} value={hall}>{hall}</option>
               ))}
             </select>
@@ -492,7 +492,7 @@ const Reports = () => {
         <div className="flex justify-end">
           <button
             onClick={handleGenerateReport}
-            disabled={generating || !dateRange[0] || !dateRange[1] || !selectedDatacenter || !selectedDatahall}
+            disabled={generating || !dateRange[0] || !dateRange[1] || !selectedDatacenter}
             className="px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
             {generating ? (
