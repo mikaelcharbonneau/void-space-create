@@ -43,6 +43,19 @@ const pduStatusOptions = ['Healthy', 'Tripped Breaker', 'Powered-Off', 'Active A
 const pduIdOptions = ['PDU A', 'PDU B', 'PDU C'];
 const rdhxStatusOptions = ['Healthy', 'Water Leak', 'Powered-Off', 'Active Alarm', 'Other'];
 
+const getSeverityFromStatus = (status: string): 'critical' | 'high' | 'medium' | 'low' => {
+  if (status.toLowerCase().includes('alarm') || status.toLowerCase().includes('leak')) {
+    return 'critical';
+  }
+  if (status === 'Powered-Off') {
+    return 'high';
+  }
+  if (status === 'Amber LED' || status === 'Tripped Breaker') {
+    return 'medium';
+  }
+  return 'low';
+};
+
 const InspectionForm = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -146,10 +159,47 @@ const InspectionForm = () => {
     }
   };
 
+  const createIncidentFromDevice = async (
+    rack: RackForm,
+    deviceType: 'psu' | 'pdu' | 'rdhx',
+    details: any
+  ) => {
+    if (!details?.status || details.status === 'Healthy') return null;
+
+    let description = '';
+    switch (deviceType) {
+      case 'psu':
+        description = `Power Supply Unit (${details.psuId}) at U${details.uHeight} - Status: ${details.status}`;
+        if (details.comments) description += `\nComments: ${details.comments}`;
+        break;
+      case 'pdu':
+        description = `Power Distribution Unit (${details.pduId}) - Status: ${details.status}`;
+        if (details.comments) description += `\nComments: ${details.comments}`;
+        break;
+      case 'rdhx':
+        description = `Rear Door Heat Exchanger - Status: ${details.status}`;
+        if (details.comments) description += `\nComments: ${details.comments}`;
+        break;
+    }
+
+    const { error } = await supabase.from('incidents').insert({
+      location: selectedLocation,
+      datahall: selectedDataHall,
+      description,
+      severity: getSeverityFromStatus(details.status),
+      user_id: user?.id
+    });
+
+    if (error) {
+      console.error(`Error creating incident for ${deviceType}:`, error);
+      throw error;
+    }
+  };
+
   const handleSubmit = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
+      const { data: auditData, error: auditError } = await supabase
         .from('AuditReports')
         .insert([{
           GeneratedBy: user?.email,
@@ -170,13 +220,33 @@ const InspectionForm = () => {
         }])
         .select();
 
-      if (error) throw error;
+      if (auditError) throw auditError;
+
+      if (hasIssues) {
+        for (const rack of racks) {
+          const promises = [];
+          
+          if (rack.devices.powerSupplyUnit && rack.psuDetails) {
+            promises.push(createIncidentFromDevice(rack, 'psu', rack.psuDetails));
+          }
+          
+          if (rack.devices.powerDistributionUnit && rack.pduDetails) {
+            promises.push(createIncidentFromDevice(rack, 'pdu', rack.pduDetails));
+          }
+          
+          if (rack.devices.rearDoorHeatExchanger && rack.rdhxDetails) {
+            promises.push(createIncidentFromDevice(rack, 'rdhx', rack.rdhxDetails));
+          }
+
+          await Promise.all(promises.filter(p => p !== null));
+        }
+      }
 
       localStorage.setItem('lastWalkThroughNumber', walkThroughNumber.toString());
       
       navigate('/confirmation', { 
         state: { 
-          inspectionId: data?.[0]?.Id,
+          inspectionId: auditData?.[0]?.Id,
           success: true 
         } 
       });
