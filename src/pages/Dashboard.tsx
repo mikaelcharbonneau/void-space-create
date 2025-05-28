@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ClipboardList, AlertTriangle, CheckCircle, ChevronDown, Calendar } from 'lucide-react';
+import { ClipboardList, AlertTriangle, CheckCircle, ChevronDown } from 'lucide-react';
 import { format } from 'date-fns';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from '../context/AuthContext';
@@ -22,22 +22,10 @@ interface Inspection {
   };
 }
 
-interface Report {
-  id: string;
-  title: string;
-  generated_by: string;
-  generated_at: string;
-  datacenter: string;
-  datahall: string;
-  status: string;
-  total_incidents: number;
-}
-
 const Dashboard = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [inspections, setInspections] = useState<Inspection[]>([]);
-  const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
   const [showLocationDropdown, setShowLocationDropdown] = useState(false);
   const [userFullName, setUserFullName] = useState<string>('');
@@ -45,10 +33,10 @@ const Dashboard = () => {
 
   useEffect(() => {
     fetchInspections();
-    fetchReports();
     if (user) {
       fetchUserProfile();
     }
+    // Get the last walkthrough number from localStorage
     const lastNumber = localStorage.getItem('lastWalkThroughNumber');
     if (lastNumber) {
       setWalkThroughNumber(parseInt(lastNumber, 10));
@@ -88,37 +76,10 @@ const Dashboard = () => {
     }
   };
 
-  const fetchReports = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('reports')
-        .select('*')
-        .order('generated_at', { ascending: false })
-        .limit(3);
-
-      if (error) throw error;
-      setReports(data || []);
-    } catch (error) {
-      console.error('Error fetching reports:', error);
-    }
-  };
-
   const stats = {
     completed: inspections.length,
     active: inspections.filter(i => i.issues_reported > 0).length,
     resolved: inspections.filter(i => i.issues_reported === 0).length
-  };
-
-  const getStatusColor = (total_incidents: number) => {
-    if (total_incidents === 0) return 'bg-emerald-100 text-emerald-800';
-    if (total_incidents > 5) return 'bg-red-100 text-red-800';
-    return 'bg-amber-100 text-amber-800';
-  };
-
-  const getStatusText = (total_incidents: number) => {
-    if (total_incidents === 0) return 'No Issues';
-    if (total_incidents > 5) return 'Critical';
-    return 'Warning';
   };
 
   const handleLocationSelect = (location: string) => {
@@ -141,7 +102,7 @@ const Dashboard = () => {
             className="bg-[rgb(68,151,115)] text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-[rgb(54,121,92)]"
           >
             <ClipboardList className="w-5 h-5" />
-            Start Walkthrough
+            Start Audit
             <ChevronDown className={`w-4 h-4 transition-transform ${showLocationDropdown ? 'rotate-180' : ''}`} />
           </button>
           
@@ -255,11 +216,11 @@ const Dashboard = () => {
           </button>
         </div>
         <div className="grid md:grid-cols-3 gap-6">
-          {reports.map((report) => (
+          {inspections.slice(0, 3).map((inspection) => (
             <div
-              key={report.id}
-              className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow cursor-pointer"
-              onClick={() => navigate(`/reports/${report.id}`)}
+              key={inspection.Id}
+              className="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer"
+              onClick={() => navigate(`/reports/${inspection.Id}`)}
             >
               <div 
                 className="relative h-48 bg-cover bg-center"
@@ -269,21 +230,12 @@ const Dashboard = () => {
               >
                 <div className="absolute inset-0 p-6 flex flex-col justify-end">
                   <h3 className="text-xl font-medium text-white mb-2">
-                    {report.title}
+                    Daily Issue Report - {format(new Date(inspection.Timestamp), 'MMM do yyyy')}
                   </h3>
-                  <p className="text-sm text-gray-200">{report.datahall}</p>
+                  <p className="text-sm text-gray-200">{inspection.datahall}</p>
                 </div>
               </div>
               <div className="p-4 bg-white border-t border-gray-100">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center text-sm text-gray-500">
-                    <Calendar className="w-4 h-4 mr-2" />
-                    {format(new Date(report.generated_at), 'MMM d, yyyy')}
-                  </div>
-                  <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${getStatusColor(report.total_incidents)}`}>
-                    {getStatusText(report.total_incidents)}
-                  </span>
-                </div>
                 <div className="flex gap-4 text-sm text-gray-600">
                   <button className="hover:text-emerald-600 transition-colors">View</button>
                   <button className="hover:text-emerald-600 transition-colors">Download</button>
