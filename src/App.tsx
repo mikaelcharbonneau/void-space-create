@@ -7,6 +7,7 @@ import { AuthProvider } from './context/AuthContext';
 import Layout from './components/layout/Layout';
 import Dashboard from './pages/Dashboard';
 import Inspections from './pages/Inspections';
+import InspectionFlow from './pages/InspectionFlow';
 import InspectionForm from './pages/InspectionForm';
 import Incidents from './pages/Incidents';
 import IncidentDetails from './pages/IncidentDetails.tsx';
@@ -36,7 +37,8 @@ const App = () => {
                   <Route element={<Layout />}>
                     <Route index element={<Dashboard />} />
                     <Route path="inspections" element={<Inspections />} />
-                    <Route path="inspection" element={<InspectionForm />} />
+                    <Route path="inspection" element={<InspectionFlow />} />
+                    <Route path="inspection/form" element={<InspectionForm />} />
                     <Route path="incidents" element={<Incidents />} />
                     <Route path="incidents/:id" element={<IncidentDetails />} />
                     <Route path="confirmation" element={<Confirmation />} />
@@ -45,7 +47,7 @@ const App = () => {
                     <Route path="reports/:id" element={<Reports />} />
                     <Route path="profile" element={<Profile />} />
                     <Route path="not-found" element={<NotFound />} />
-                    <Route path="*" element={<Navigate to="/not-found\" replace />} />
+                    <Route path="*" element={<Navigate to="/not-found" replace />} />
                   </Route>
                 </Route>
               </Routes>
