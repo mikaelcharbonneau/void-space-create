@@ -192,7 +192,6 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Recent Audits */}
       <div className="mb-8">
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-medium">Recent Audits</h2>
@@ -221,7 +220,7 @@ const Dashboard = () => {
                 <tr 
                   key={audit.Id}
                   className="hover:bg-gray-50 cursor-pointer"
-                  onClick={() => navigate(`/reports/${audit.Id}`)}
+                  onClick={() => navigate(`/inspections/${audit.Id}`)}
                 >
                   <td className="px-6 py-4 text-sm text-gray-900">{audit.datacenter}</td>
                   <td className="px-6 py-4 text-sm text-gray-900">{audit.datahall}</td>
@@ -249,7 +248,6 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Recent Reports */}
       <div>
         <div className="flex justify-between items-center mb-4">
           <h2 className="text-xl font-medium">Recent Reports</h2>
