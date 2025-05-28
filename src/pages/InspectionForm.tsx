@@ -161,22 +161,26 @@ const InspectionForm = () => {
       if (hasIssues && racks.length > 0) {
         const incidentPromises = racks.map(async (rack) => {
           let description = '';
+          let part_type = 'Other'; // Default value
+          let part_identifier = '';
           
           if (rack.devices.powerSupplyUnit && rack.psuDetails) {
+            part_type = 'PSU';
+            part_identifier = rack.psuDetails.psuId;
             description = `PSU Issue - Status: ${rack.psuDetails.status}, PSU ID: ${rack.psuDetails.psuId}, U-Height: ${rack.psuDetails.uHeight}`;
             if (rack.psuDetails.comments) {
               description += `, Comments: ${rack.psuDetails.comments}`;
             }
-          }
-          
-          if (rack.devices.powerDistributionUnit && rack.pduDetails) {
+          } else if (rack.devices.powerDistributionUnit && rack.pduDetails) {
+            part_type = 'PDU';
+            part_identifier = rack.pduDetails.pduId;
             description = `PDU Issue - Status: ${rack.pduDetails.status}, PDU ID: ${rack.pduDetails.pduId}`;
             if (rack.pduDetails.comments) {
               description += `, Comments: ${rack.pduDetails.comments}`;
             }
-          }
-          
-          if (rack.devices.rearDoorHeatExchanger && rack.rdhxDetails) {
+          } else if (rack.devices.rearDoorHeatExchanger && rack.rdhxDetails) {
+            part_type = 'RDHX';
+            part_identifier = 'RDHX-1';
             description = `RDHX Issue - Status: ${rack.rdhxDetails.status}`;
             if (rack.rdhxDetails.comments) {
               description += `, Comments: ${rack.rdhxDetails.comments}`;
@@ -190,7 +194,9 @@ const InspectionForm = () => {
             description,
             severity: 'medium',
             status: 'open',
-            user_id: user?.id
+            user_id: user?.id,
+            part_type,
+            part_identifier
           });
         });
 
