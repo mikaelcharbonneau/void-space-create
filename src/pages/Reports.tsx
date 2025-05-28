@@ -9,15 +9,15 @@ import "react-datepicker/dist/react-datepicker.css";
 
 interface Report {
   Id: string;
-  UserEmail: string;
+  GeneratedBy: string;
   Timestamp: string;
-  ReportData: any;
   datacenter: string;
   datahall: string;
   issues_reported: number;
   state: string;
   user_full_name: string;
   walkthrough_id: number;
+  ReportData: any;
 }
 
 const Reports = () => {
@@ -86,7 +86,7 @@ const Reports = () => {
         .select('walkthrough_id')
         .order('walkthrough_id', { ascending: false })
         .limit(1)
-        .single();
+        .maybeSingle();
 
       const nextWalkthroughId = (latestReport?.walkthrough_id || 0) + 1;
 
@@ -94,7 +94,7 @@ const Reports = () => {
       const { data, error } = await supabase
         .from('AuditReports')
         .insert([{
-          UserEmail: user?.email,
+          GeneratedBy: user?.email,
           user_full_name: user?.user_metadata?.full_name || user?.email,
           datacenter: selectedDatacenter || 'All Locations',
           datahall: selectedDatahall || 'All Data Halls',
