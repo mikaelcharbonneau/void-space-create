@@ -57,6 +57,7 @@ const Reports = () => {
   const [showFilters, setShowFilters] = useState(false);
 
   const datacenters = [
+    'All Datacenters',
     'Canada - Quebec',
     'Norway - Enebakk',
     'Norway - Rjukan',
@@ -65,11 +66,11 @@ const Reports = () => {
   ];
 
   const datahalls = {
-    'Canada - Quebec': ['Island 1', 'Island 8', 'Island 9', 'Island 10', 'Island 11', 'Island 12', 'Green Nitrogen'],
-    'Norway - Enebakk': ['Flying Whale'],
-    'Norway - Rjukan': ['Flying Whale'],
-    'United States - Dallas': ['Island 1', 'Island 2', 'Island 3', 'Island 4'],
-    'United States - Houston': ['H20 Lab']
+    'Canada - Quebec': ['All Data Halls', 'Island 1', 'Island 8', 'Island 9', 'Island 10', 'Island 11', 'Island 12', 'Green Nitrogen'],
+    'Norway - Enebakk': ['All Data Halls', 'Flying Whale'],
+    'Norway - Rjukan': ['All Data Halls', 'Flying Whale'],
+    'United States - Dallas': ['All Data Halls', 'Island 1', 'Island 2', 'Island 3', 'Island 4'],
+    'United States - Houston': ['All Data Halls', 'H20 Lab']
   };
 
   useEffect(() => {
@@ -113,14 +114,21 @@ const Reports = () => {
 
       // Fetch related incidents
       if (reportData) {
-        const { data: incidentData, error: incidentError } = await supabase
+        let query = supabase
           .from('incidents')
           .select('*')
           .gte('created_at', reportData.date_range_start)
-          .lte('created_at', reportData.date_range_end)
-          .eq('location', reportData.datacenter)
-          .eq('datahall', reportData.datahall)
-          .order('created_at', { ascending: false });
+          .lte('created_at', reportData.date_range_end);
+
+        // Only apply location filters if specific values are selected
+        if (reportData.datacenter !== 'All Datacenters') {
+          query = query.eq('location', reportData.datacenter);
+        }
+        if (reportData.datahall !== 'All Data Halls') {
+          query = query.eq('datahall', reportData.datahall);
+        }
+
+        const { data: incidentData, error: incidentError } = await query.order('created_at', { ascending: false });
 
         if (incidentError) throw incidentError;
         setIncidents(incidentData || []);
@@ -133,39 +141,49 @@ const Reports = () => {
   };
 
   const handleGenerateReport = async () => {
-    if (!dateRange[0] || !dateRange[1] || !selectedDatacenter || !selectedDatahall) {
-      alert('Please select date range, datacenter, and data hall');
+    if (!dateRange[0] || !dateRange[1] || !selectedDatacenter) {
+      alert('Please select date range and datacenter');
       return;
     }
 
     try {
       setGenerating(true);
 
-      // Fetch incidents for the selected criteria
-      const query = supabase
+      // Build the base query
+      let query = supabase
         .from('incidents')
         .select('*')
         .gte('created_at', dateRange[0].toISOString())
-        .lte('created_at', dateRange[1].toISOString())
-        .eq('location', selectedDatacenter)
-        .eq('datahall', selectedDatahall);
+        .lte('created_at', dateRange[1].toISOString());
 
+      // Only apply location filters if specific values are selected
+      if (selectedDatacenter !== 'All Datacenters') {
+        query = query.eq('location', selectedDatacenter);
+      }
+      if (selectedDatahall && selectedDatahall !== 'All Data Halls') {
+        query = query.eq('datahall', selectedDatahall);
+      }
       if (selectedSeverity) {
-        query.eq('severity', selectedSeverity);
+        query = query.eq('severity', selectedSeverity);
       }
       if (selectedStatus) {
-        query.eq('status', selectedStatus);
+        query = query.eq('status', selectedStatus);
       }
 
       const { data: incidents, error: incidentsError } = await query;
 
       if (incidentsError) throw incidentsError;
 
+      // Create title based on selected filters
+      const locationPart = selectedDatacenter === 'All Datacenters' 
+        ? 'All Locations' 
+        : `${selectedDatacenter}${selectedDatahall && selectedDatahall !== 'All Data Halls' ? ` - ${selectedDatahall}` : ''}`;
+
       // Create new report
       const { data: report, error: reportError } = await supabase
         .from('reports')
         .insert([{
-          title: `Incident Report - ${format(dateRange[0], 'MMM d, yyyy')} to ${format(dateRange[1], 'MMM d, yyyy')}`,
+          title: `Incident Report - ${locationPart}`,
           generated_by: user?.id,
           date_range_start: dateRange[0].toISOString(),
           date_range_end: dateRange[1].toISOString(),
@@ -176,7 +194,9 @@ const Reports = () => {
           report_data: {
             filters: {
               severity: selectedSeverity,
-              status: selectedStatus
+              status: selectedStatus,
+              datacenter: selectedDatacenter,
+              datahall: selectedDatahall
             },
             incidents: incidents
           }
