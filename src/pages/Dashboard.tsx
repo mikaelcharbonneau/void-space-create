@@ -192,7 +192,7 @@ const Dashboard = () => {
 
       <div className="mb-8">
         <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-medium">RECENT AUDITS</h2>
+          <h2 className="text-xl font-medium">Recent Audits</h2>
           <button
             onClick={() => navigate('/inspections')}
             className="text-emerald-500 hover:text-emerald-600"
