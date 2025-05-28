@@ -218,49 +218,6 @@ const Reports = () => {
     }
   };
 
-  const downloadCSV = () => {
-    if (!incidents.length) return;
-
-    const headers = [
-      'ID',
-      'Location',
-      'Data Hall',
-      'Rack Number',
-      'Part Type',
-      'Part ID',
-      'U-Height',
-      'Severity',
-      'Status',
-      'Created At',
-      'Description',
-      'Comments'
-    ];
-
-    const csvContent = [
-      headers.join(','),
-      ...incidents.map(incident => [
-        incident.id,
-        incident.location,
-        incident.datahall,
-        incident.rack_number,
-        incident.part_type,
-        incident.part_identifier,
-        incident.u_height || '',
-        incident.severity,
-        incident.status,
-        format(new Date(incident.created_at), 'yyyy-MM-dd HH:mm:ss'),
-        `"${incident.description.replace(/"/g, '""')}"`,
-        `"${incident.comments?.replace(/"/g, '""') || ''}"`,
-      ].join(','))
-    ].join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `report_${selectedReport?.id}_incidents.csv`;
-    link.click();
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -466,10 +423,14 @@ const Reports = () => {
               className="w-full px-3 py-2 border border-gray-300 rounded-md"
               disabled={!selectedDatacenter || selectedDatacenter === 'All Datacenters'}
             >
-              <option value="">Select Data Hall</option>
-              {selectedDatacenter && selectedDatacenter !== 'All Datacenters' && datahalls[selectedDatacenter as keyof typeof datahalls]?.map(hall => (
-                <option key={hall} value={hall}>{hall}</option>
-              ))}
+              <option value="">
+                {selectedDatacenter === 'All Datacenters' ? 'All Data Halls' : 'Select Data Hall'}
+              </option>
+              {selectedDatacenter && selectedDatacenter !== 'All Datacenters' && 
+                datahalls[selectedDatacenter as keyof typeof datahalls]?.map(hall => (
+                  <option key={hall} value={hall}>{hall}</option>
+                ))
+              }
             </select>
           </div>
 
