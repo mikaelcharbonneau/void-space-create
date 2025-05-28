@@ -5,7 +5,7 @@ const createIncidentFromDevice = async (
   rack: RackForm,
   deviceType: 'psu' | 'pdu' | 'rdhx',
   details: any
-) => {
+): Promise<null> => {
   if (!details?.status || details.status === 'Healthy') return null;
 
   const incident = {
@@ -27,7 +27,7 @@ const createIncidentFromDevice = async (
           part_identifier: details.psuId,
           u_height: details.uHeight
         });
-        return null;
+        break;
       case 'pdu':
         await supabase.from('incidents').insert({
           ...incident,
@@ -35,7 +35,7 @@ const createIncidentFromDevice = async (
           part_identifier: details.pduId,
           u_height: null
         });
-        return null;
+        break;
       case 'rdhx':
         await supabase.from('incidents').insert({
           ...incident,
@@ -43,14 +43,13 @@ const createIncidentFromDevice = async (
           part_identifier: 'RDHX-1',
           u_height: null
         });
-        return null;
-      default:
-        return null;
+        break;
     }
   } catch (error) {
     console.error('Error creating incident:', error);
-    return null;
   }
+  
+  return null;
 };
 
-export default createIncidentFromDevice
+export default createIncidentFromDevice;
