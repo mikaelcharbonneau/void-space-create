@@ -45,6 +45,7 @@ const Reports = () => {
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
+  const [reportNotFound, setReportNotFound] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [dateRange, setDateRange] = useState<[Date | null, Date | null]>([
     new Date(new Date().setDate(new Date().getDate() - 7)), // Last 7 days
@@ -102,38 +103,44 @@ const Reports = () => {
   const fetchReportDetails = async (reportId: string) => {
     try {
       setLoading(true);
+      setReportNotFound(false);
       
-      // Fetch report details
+      // Fetch report details using maybeSingle() instead of single()
       const { data: reportData, error: reportError } = await supabase
         .from('reports')
         .select('*')
         .eq('id', reportId)
-        .single();
+        .maybeSingle();
 
       if (reportError) throw reportError;
+
+      if (!reportData) {
+        setReportNotFound(true);
+        setSelectedReport(null);
+        return;
+      }
+
       setSelectedReport(reportData);
 
-      // Fetch related incidents
-      if (reportData) {
-        let query = supabase
-          .from('incidents')
-          .select('*')
-          .gte('created_at', reportData.date_range_start)
-          .lte('created_at', reportData.date_range_end);
+      // Only fetch incidents if we found a report
+      let query = supabase
+        .from('incidents')
+        .select('*')
+        .gte('created_at', reportData.date_range_start)
+        .lte('created_at', reportData.date_range_end);
 
-        // Only apply location filters if specific values are selected
-        if (reportData.datacenter !== 'All Datacenters') {
-          query = query.eq('location', reportData.datacenter);
-        }
-        if (reportData.datahall !== 'All Data Halls') {
-          query = query.eq('datahall', reportData.datahall);
-        }
-
-        const { data: incidentData, error: incidentError } = await query.order('created_at', { ascending: false });
-
-        if (incidentError) throw incidentError;
-        setIncidents(incidentData || []);
+      // Only apply location filters if specific values are selected
+      if (reportData.datacenter !== 'All Datacenters') {
+        query = query.eq('location', reportData.datacenter);
       }
+      if (reportData.datahall !== 'All Data Halls') {
+        query = query.eq('datahall', reportData.datahall);
+      }
+
+      const { data: incidentData, error: incidentError } = await query.order('created_at', { ascending: false });
+
+      if (incidentError) throw incidentError;
+      setIncidents(incidentData || []);
     } catch (error) {
       console.error('Error fetching report details:', error);
       setIncidents([]);
@@ -209,7 +216,7 @@ const Reports = () => {
       if (reportError) throw reportError;
 
       // Navigate to the new report
-      navigate(`/reports/${report.data.id}`);
+      navigate(`/reports/${report.id}`);
     } catch (error) {
       console.error('Error generating report:', error);
       alert('Failed to generate report. Please try again.');
@@ -222,6 +229,33 @@ const Reports = () => {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500"></div>
+      </div>
+    );
+  }
+
+  if (id && reportNotFound) {
+    return (
+      <div className="p-6">
+        <div className="max-w-6xl mx-auto">
+          <button
+            onClick={() => navigate('/reports')}
+            className="flex items-center text-gray-600 hover:text-gray-900 mb-6"
+          >
+            <ArrowLeft className="w-5 h-5 mr-2" />
+            Back to Reports
+          </button>
+
+          <div className="bg-white rounded-lg shadow-sm p-6 text-center">
+            <h2 className="text-2xl font-semibold text-gray-800 mb-4">Report Not Found</h2>
+            <p className="text-gray-600 mb-6">The report you're looking for doesn't exist or has been deleted.</p>
+            <button
+              onClick={() => navigate('/reports')}
+              className="px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors"
+            >
+              View All Reports
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
