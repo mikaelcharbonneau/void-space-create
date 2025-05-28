@@ -44,11 +44,33 @@ const Reports = () => {
   const [selectedReport, setSelectedReport] = useState<Report | null>(null);
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [loading, setLoading] = useState(true);
+  const [generating, setGenerating] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [dateRange, setDateRange] = useState<[Date | null, Date | null]>([
     new Date(new Date().setDate(new Date().getDate() - 7)), // Last 7 days
     new Date()
   ]);
+  const [selectedDatacenter, setSelectedDatacenter] = useState('');
+  const [selectedDatahall, setSelectedDatahall] = useState('');
+  const [selectedSeverity, setSelectedSeverity] = useState('');
+  const [selectedStatus, setSelectedStatus] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
+
+  const datacenters = [
+    'Canada - Quebec',
+    'Norway - Enebakk',
+    'Norway - Rjukan',
+    'United States - Dallas',
+    'United States - Houston'
+  ];
+
+  const datahalls = {
+    'Canada - Quebec': ['Island 1', 'Island 8', 'Island 9', 'Island 10', 'Island 11', 'Island 12', 'Green Nitrogen'],
+    'Norway - Enebakk': ['Flying Whale'],
+    'Norway - Rjukan': ['Flying Whale'],
+    'United States - Dallas': ['Island 1', 'Island 2', 'Island 3', 'Island 4'],
+    'United States - Houston': ['H20 Lab']
+  };
 
   useEffect(() => {
     if (id) {
@@ -107,6 +129,70 @@ const Reports = () => {
       console.error('Error fetching report details:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleGenerateReport = async () => {
+    if (!dateRange[0] || !dateRange[1] || !selectedDatacenter || !selectedDatahall) {
+      alert('Please select date range, datacenter, and data hall');
+      return;
+    }
+
+    try {
+      setGenerating(true);
+
+      // Fetch incidents for the selected criteria
+      const query = supabase
+        .from('incidents')
+        .select('*')
+        .gte('created_at', dateRange[0].toISOString())
+        .lte('created_at', dateRange[1].toISOString())
+        .eq('location', selectedDatacenter)
+        .eq('datahall', selectedDatahall);
+
+      if (selectedSeverity) {
+        query.eq('severity', selectedSeverity);
+      }
+      if (selectedStatus) {
+        query.eq('status', selectedStatus);
+      }
+
+      const { data: incidents, error: incidentsError } = await query;
+
+      if (incidentsError) throw incidentsError;
+
+      // Create new report
+      const { data: report, error: reportError } = await supabase
+        .from('reports')
+        .insert([{
+          title: `Incident Report - ${format(dateRange[0], 'MMM d, yyyy')} to ${format(dateRange[1], 'MMM d, yyyy')}`,
+          generated_by: user?.id,
+          date_range_start: dateRange[0].toISOString(),
+          date_range_end: dateRange[1].toISOString(),
+          datacenter: selectedDatacenter,
+          datahall: selectedDatahall,
+          status: incidents?.length === 0 ? 'Healthy' : incidents?.some(i => i.severity === 'critical') ? 'Critical' : 'Warning',
+          total_incidents: incidents?.length || 0,
+          report_data: {
+            filters: {
+              severity: selectedSeverity,
+              status: selectedStatus
+            },
+            incidents: incidents
+          }
+        }])
+        .select()
+        .single();
+
+      if (reportError) throw reportError;
+
+      // Navigate to the new report
+      navigate(`/reports/${report.id}`);
+    } catch (error) {
+      console.error('Error generating report:', error);
+      alert('Failed to generate report. Please try again.');
+    } finally {
+      setGenerating(false);
     }
   };
 
@@ -303,43 +389,136 @@ const Reports = () => {
           <h1 className="text-2xl font-semibold mb-2">Reports</h1>
           <p className="text-gray-600">Generate and view incident reports</p>
         </div>
-        <button
-          onClick={() => navigate('/reports/new')}
-          className="flex items-center gap-2 px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors"
-        >
-          <Plus className="w-5 h-5" />
-          New Report
-        </button>
       </div>
 
-      <div className="grid md:grid-cols-3 gap-6">
-        {reports.map((report) => (
-          <div
-            key={report.id}
-            className="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer"
-            onClick={() => navigate(`/reports/${report.id}`)}
-          >
-            <div 
-              className="relative h-48 bg-cover bg-center"
-              style={{ 
-                backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.7)), url(https://images.pexels.com/photos/325229/pexels-photo-325229.jpeg)`,
-              }}
-            >
-              <div className="absolute inset-0 p-6 flex flex-col justify-end">
-                <h3 className="text-xl font-medium text-white mb-2">
-                  {report.title}
-                </h3>
-                <p className="text-sm text-gray-200">{report.datacenter} - {report.datahall}</p>
-              </div>
-            </div>
-            <div className="p-4 bg-white border-t border-gray-100">
-              <div className="flex justify-between items-center text-sm text-gray-600">
-                <span>Issues: {report.total_incidents}</span>
-                <span>{format(new Date(report.generated_at), 'MMM d, yyyy')}</span>
-              </div>
+      <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
+        <h2 className="text-lg font-medium mb-6">Generate New Report</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Date Range</label>
+            <div className="flex gap-2">
+              <DatePicker
+                selected={dateRange[0]}
+                onChange={(date) => setDateRange([date, dateRange[1]])}
+                selectsStart
+                startDate={dateRange[0]}
+                endDate={dateRange[1]}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                placeholderText="Start Date"
+              />
+              <DatePicker
+                selected={dateRange[1]}
+                onChange={(date) => setDateRange([dateRange[0], date])}
+                selectsEnd
+                startDate={dateRange[0]}
+                endDate={dateRange[1]}
+                minDate={dateRange[0]}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md"
+                placeholderText="End Date"
+              />
             </div>
           </div>
-        ))}
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Datacenter</label>
+            <select
+              value={selectedDatacenter}
+              onChange={(e) => {
+                setSelectedDatacenter(e.target.value);
+                setSelectedDatahall('');
+              }}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+            >
+              <option value="">Select Datacenter</option>
+              {datacenters.map(dc => (
+                <option key={dc} value={dc}>{dc}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Data Hall</label>
+            <select
+              value={selectedDatahall}
+              onChange={(e) => setSelectedDatahall(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+              disabled={!selectedDatacenter}
+            >
+              <option value="">Select Data Hall</option>
+              {selectedDatacenter && datahalls[selectedDatacenter as keyof typeof datahalls].map(hall => (
+                <option key={hall} value={hall}>{hall}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Severity</label>
+            <select
+              value={selectedSeverity}
+              onChange={(e) => setSelectedSeverity(e.target.value)}
+              className="w-full px-3 py-2 border border-gray-300 rounded-md"
+            >
+              <option value="">All Severities</option>
+              <option value="critical">Critical</option>
+              <option value="high">High</option>
+              <option value="medium">Medium</option>
+              <option value="low">Low</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="flex justify-end">
+          <button
+            onClick={handleGenerateReport}
+            disabled={generating || !dateRange[0] || !dateRange[1] || !selectedDatacenter || !selectedDatahall}
+            className="px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+          >
+            {generating ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></div>
+                Generating...
+              </>
+            ) : (
+              <>
+                <FileDown className="w-5 h-5" />
+                Generate Report
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+
+      <div className="bg-white rounded-lg shadow-sm p-6">
+        <h2 className="text-lg font-medium mb-6">Recent Reports</h2>
+        <div className="grid md:grid-cols-3 gap-6">
+          {reports.map((report) => (
+            <div
+              key={report.id}
+              className="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer border border-gray-100"
+              onClick={() => navigate(`/reports/${report.id}`)}
+            >
+              <div 
+                className="relative h-48 bg-cover bg-center"
+                style={{ 
+                  backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.7)), url(https://images.pexels.com/photos/325229/pexels-photo-325229.jpeg)`,
+                }}
+              >
+                <div className="absolute inset-0 p-6 flex flex-col justify-end">
+                  <h3 className="text-xl font-medium text-white mb-2">
+                    {report.title}
+                  </h3>
+                  <p className="text-sm text-gray-200">{report.datacenter} - {report.datahall}</p>
+                </div>
+              </div>
+              <div className="p-4 bg-white">
+                <div className="flex justify-between items-center text-sm text-gray-600">
+                  <span>Issues: {report.total_incidents}</span>
+                  <span>{format(new Date(report.generated_at), 'MMM d, yyyy')}</span>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
