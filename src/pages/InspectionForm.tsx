@@ -43,19 +43,6 @@ const pduStatusOptions = ['Healthy', 'Tripped Breaker', 'Powered-Off', 'Active A
 const pduIdOptions = ['PDU A', 'PDU B', 'PDU C'];
 const rdhxStatusOptions = ['Healthy', 'Water Leak', 'Powered-Off', 'Active Alarm', 'Other'];
 
-const getSeverityFromStatus = (status: string): 'critical' | 'high' | 'medium' | 'low' => {
-  if (status.toLowerCase().includes('alarm') || status.toLowerCase().includes('leak')) {
-    return 'critical';
-  }
-  if (status === 'Powered-Off') {
-    return 'high';
-  }
-  if (status === 'Amber LED' || status === 'Tripped Breaker') {
-    return 'medium';
-  }
-  return 'low';
-};
-
 const InspectionForm = () => {
   const location = useLocation();
   const navigate = useNavigate();
@@ -69,6 +56,7 @@ const InspectionForm = () => {
   const [expandedRacks, setExpandedRacks] = useState<string[]>([]);
   const [walkThroughNumber, setWalkThroughNumber] = useState(1);
   const [userFullName, setUserFullName] = useState('');
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const lastNumber = localStorage.getItem('lastWalkThroughNumber');
@@ -83,18 +71,24 @@ const InspectionForm = () => {
 
   const fetchUserProfile = async () => {
     try {
-      const { data, error } = await supabase
+      if (!navigator.onLine) {
+        throw new Error('No internet connection');
+      }
+
+      const { data, error: fetchError } = await supabase
         .from('user_profiles')
         .select('full_name')
         .eq('user_id', user?.id)
         .single();
 
-      if (error) throw error;
+      if (fetchError) throw fetchError;
+      
       if (data) {
         setUserFullName(data.full_name);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching user profile:', error);
+      setError(error.message || 'Failed to fetch user profile');
     }
   };
 
@@ -159,47 +153,57 @@ const InspectionForm = () => {
     }
   };
 
-  const createIncidentFromDevice = async (
-    rack: RackForm,
-    deviceType: 'psu' | 'pdu' | 'rdhx',
-    details: any
-  ) => {
-    if (!details?.status || details.status === 'Healthy') return null;
-
-    let description = '';
-    switch (deviceType) {
-      case 'psu':
-        description = `Power Supply Unit (${details.psuId}) at U${details.uHeight} - Status: ${details.status}`;
-        if (details.comments) description += `\nComments: ${details.comments}`;
-        break;
-      case 'pdu':
-        description = `Power Distribution Unit (${details.pduId}) - Status: ${details.status}`;
-        if (details.comments) description += `\nComments: ${details.comments}`;
-        break;
-      case 'rdhx':
-        description = `Rear Door Heat Exchanger - Status: ${details.status}`;
-        if (details.comments) description += `\nComments: ${details.comments}`;
-        break;
-    }
-
-    const { error } = await supabase.from('incidents').insert({
-      location: selectedLocation,
-      datahall: selectedDataHall,
-      description,
-      severity: getSeverityFromStatus(details.status),
-      user_id: user?.id
-    });
-
-    if (error) {
-      console.error(`Error creating incident for ${deviceType}:`, error);
-      throw error;
-    }
-  };
-
   const handleSubmit = async () => {
     setLoading(true);
+    setError(null);
     try {
-      const { data: auditData, error: auditError } = await supabase
+      // Create incidents for each rack with issues
+      if (hasIssues && racks.length > 0) {
+        const incidentPromises = racks.map(async (rack) => {
+          let description = '';
+          
+          if (rack.devices.powerSupplyUnit && rack.psuDetails) {
+            description = `PSU Issue - Status: ${rack.psuDetails.status}, PSU ID: ${rack.psuDetails.psuId}, U-Height: ${rack.psuDetails.uHeight}`;
+            if (rack.psuDetails.comments) {
+              description += `, Comments: ${rack.psuDetails.comments}`;
+            }
+          }
+          
+          if (rack.devices.powerDistributionUnit && rack.pduDetails) {
+            description = `PDU Issue - Status: ${rack.pduDetails.status}, PDU ID: ${rack.pduDetails.pduId}`;
+            if (rack.pduDetails.comments) {
+              description += `, Comments: ${rack.pduDetails.comments}`;
+            }
+          }
+          
+          if (rack.devices.rearDoorHeatExchanger && rack.rdhxDetails) {
+            description = `RDHX Issue - Status: ${rack.rdhxDetails.status}`;
+            if (rack.rdhxDetails.comments) {
+              description += `, Comments: ${rack.rdhxDetails.comments}`;
+            }
+          }
+
+          return supabase.from('incidents').insert({
+            location: selectedLocation,
+            datahall: selectedDataHall,
+            rack_number: rack.location,
+            description,
+            severity: 'medium',
+            status: 'open',
+            user_id: user?.id
+          });
+        });
+
+        const results = await Promise.all(incidentPromises);
+        const errors = results.filter(result => result.error);
+        
+        if (errors.length > 0) {
+          throw new Error(`Failed to create ${errors.length} incidents`);
+        }
+      }
+
+      // Create the audit report
+      const { data, error: reportError } = await supabase
         .from('AuditReports')
         .insert([{
           GeneratedBy: user?.email,
@@ -220,38 +224,19 @@ const InspectionForm = () => {
         }])
         .select();
 
-      if (auditError) throw auditError;
-
-      if (hasIssues) {
-        for (const rack of racks) {
-          const promises = [];
-          
-          if (rack.devices.powerSupplyUnit && rack.psuDetails) {
-            promises.push(createIncidentFromDevice(rack, 'psu', rack.psuDetails));
-          }
-          
-          if (rack.devices.powerDistributionUnit && rack.pduDetails) {
-            promises.push(createIncidentFromDevice(rack, 'pdu', rack.pduDetails));
-          }
-          
-          if (rack.devices.rearDoorHeatExchanger && rack.rdhxDetails) {
-            promises.push(createIncidentFromDevice(rack, 'rdhx', rack.rdhxDetails));
-          }
-
-          await Promise.all(promises.filter(p => p !== null));
-        }
-      }
+      if (reportError) throw reportError;
 
       localStorage.setItem('lastWalkThroughNumber', walkThroughNumber.toString());
       
       navigate('/confirmation', { 
         state: { 
-          inspectionId: auditData?.[0]?.Id,
+          inspectionId: data?.[0]?.Id,
           success: true 
         } 
       });
     } catch (error: any) {
       console.error('Error submitting inspection:', error);
+      setError(error.message || 'Failed to submit inspection');
       navigate('/confirmation', { 
         state: { 
           success: false,
@@ -266,6 +251,12 @@ const InspectionForm = () => {
   return (
     <Box pad="medium" overflow="auto" height={{ min: '100vh' }}>
       <div className="max-w-3xl mx-auto pb-24">
+        {error && (
+          <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+            {error}
+          </div>
+        )}
+        
         <div className="mb-8">
           <h2 className="text-xl font-semibold mb-4">Walkthrough Audit #{walkThroughNumber}</h2>
           <div className="bg-white rounded-lg p-6 shadow-sm">
