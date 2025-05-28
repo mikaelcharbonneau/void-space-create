@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Filter } from 'lucide-react';
+import { Search, Filter, ChevronDown } from 'lucide-react';
 import { format } from 'date-fns';
 import { supabase } from '../lib/supabaseClient';
+import DatePicker from 'react-datepicker';
+import "react-datepicker/dist/react-datepicker.css";
 
 interface Inspection {
   Id: string;
@@ -25,6 +27,28 @@ const Inspections = () => {
   const [inspections, setInspections] = useState<Inspection[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
+  const [dateRange, setDateRange] = useState<[Date | null, Date | null]>([null, null]);
+  const [selectedDatacenter, setSelectedDatacenter] = useState('');
+  const [selectedDatahall, setSelectedDatahall] = useState('');
+  const [selectedTechnician, setSelectedTechnician] = useState('');
+  const [selectedState, setSelectedState] = useState('');
+
+  const datacenters = [
+    'Canada - Quebec',
+    'Norway - Enebakk',
+    'Norway - Rjukan',
+    'United States - Dallas',
+    'United States - Houston'
+  ];
+
+  const datahalls = {
+    'Canada - Quebec': ['Island 1', 'Island 8', 'Island 9', 'Island 10', 'Island 11', 'Island 12', 'Green Nitrogen'],
+    'Norway - Enebakk': ['Flying Whale'],
+    'Norway - Rjukan': ['Flying Whale'],
+    'United States - Dallas': ['Island 1', 'Island 2', 'Island 3', 'Island 4'],
+    'United States - Houston': ['H20 Lab']
+  };
 
   useEffect(() => {
     fetchInspections();
@@ -47,11 +71,48 @@ const Inspections = () => {
     }
   };
 
-  const filteredInspections = inspections.filter(inspection =>
-    inspection.datacenter?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    inspection.datahall?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    inspection.user_full_name?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const applyFilters = (inspection: Inspection) => {
+    // Search term filter
+    if (searchTerm && !inspection.datacenter?.toLowerCase().includes(searchTerm.toLowerCase()) &&
+        !inspection.datahall?.toLowerCase().includes(searchTerm.toLowerCase()) &&
+        !inspection.user_full_name?.toLowerCase().includes(searchTerm.toLowerCase())) {
+      return false;
+    }
+
+    // Date range filter
+    if (dateRange[0] && dateRange[1]) {
+      const inspectionDate = new Date(inspection.Timestamp);
+      if (inspectionDate < dateRange[0] || inspectionDate > dateRange[1]) {
+        return false;
+      }
+    }
+
+    // Datacenter filter
+    if (selectedDatacenter && inspection.datacenter !== selectedDatacenter) {
+      return false;
+    }
+
+    // Data hall filter
+    if (selectedDatahall && inspection.datahall !== selectedDatahall) {
+      return false;
+    }
+
+    // Technician filter
+    if (selectedTechnician && inspection.user_full_name !== selectedTechnician) {
+      return false;
+    }
+
+    // State filter
+    if (selectedState && inspection.state !== selectedState) {
+      return false;
+    }
+
+    return true;
+  };
+
+  const filteredInspections = inspections.filter(applyFilters);
+
+  const uniqueTechnicians = Array.from(new Set(inspections.map(i => i.user_full_name))).filter(Boolean);
 
   return (
     <div className="p-6">
@@ -62,27 +123,142 @@ const Inspections = () => {
         </div>
       </div>
 
-      <div className="flex gap-4 mb-8">
-        <div className="flex-1 relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
-          <input
-            type="text"
-            placeholder="Search audits"
-            className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+      <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
+        <div className="flex flex-wrap gap-4 mb-6">
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <input
+              type="text"
+              placeholder="Search audits"
+              className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+
+          <div className="flex gap-4">
+            <select
+              value={selectedState}
+              onChange={(e) => setSelectedState(e.target.value)}
+              className="border border-gray-200 rounded-lg px-4 py-2"
+            >
+              <option value="">All States</option>
+              <option value="Healthy">Healthy</option>
+              <option value="Warning">Warning</option>
+              <option value="Critical">Critical</option>
+            </select>
+
+            <div className="relative">
+              <button
+                onClick={() => setShowFilters(!showFilters)}
+                className="border border-gray-200 rounded-lg px-4 py-2 flex items-center gap-2 hover:bg-gray-50"
+              >
+                <Filter className="w-5 h-5" />
+                More Filters
+                <ChevronDown className={`w-4 h-4 transition-transform ${showFilters ? 'rotate-180' : ''}`} />
+              </button>
+
+              {showFilters && (
+                <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-lg p-4 z-50">
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Date Range</label>
+                      <div className="flex gap-2">
+                        <DatePicker
+                          selected={dateRange[0]}
+                          onChange={(date) => setDateRange([date, dateRange[1]])}
+                          selectsStart
+                          startDate={dateRange[0]}
+                          endDate={dateRange[1]}
+                          className="flex-1 px-3 py-2 border border-gray-200 rounded-md"
+                          placeholderText="Start Date"
+                        />
+                        <DatePicker
+                          selected={dateRange[1]}
+                          onChange={(date) => setDateRange([dateRange[0], date])}
+                          selectsEnd
+                          startDate={dateRange[0]}
+                          endDate={dateRange[1]}
+                          minDate={dateRange[0]}
+                          className="flex-1 px-3 py-2 border border-gray-200 rounded-md"
+                          placeholderText="End Date"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Datacenter</label>
+                      <select
+                        value={selectedDatacenter}
+                        onChange={(e) => {
+                          setSelectedDatacenter(e.target.value);
+                          setSelectedDatahall('');
+                        }}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-md"
+                      >
+                        <option value="">All Datacenters</option>
+                        {datacenters.map(dc => (
+                          <option key={dc} value={dc}>{dc}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Data Hall</label>
+                      <select
+                        value={selectedDatahall}
+                        onChange={(e) => setSelectedDatahall(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-md"
+                        disabled={!selectedDatacenter}
+                      >
+                        <option value="">All Data Halls</option>
+                        {selectedDatacenter && datahalls[selectedDatacenter as keyof typeof datahalls].map(hall => (
+                          <option key={hall} value={hall}>{hall}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1">Technician</label>
+                      <select
+                        value={selectedTechnician}
+                        onChange={(e) => setSelectedTechnician(e.target.value)}
+                        className="w-full px-3 py-2 border border-gray-200 rounded-md"
+                      >
+                        <option value="">All Technicians</option>
+                        {uniqueTechnicians.map(tech => (
+                          <option key={tech} value={tech}>{tech}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="flex justify-end gap-2 pt-2">
+                      <button
+                        onClick={() => {
+                          setDateRange([null, null]);
+                          setSelectedDatacenter('');
+                          setSelectedDatahall('');
+                          setSelectedTechnician('');
+                          setSelectedState('');
+                          setShowFilters(false);
+                        }}
+                        className="px-3 py-1 text-sm text-gray-600 hover:text-gray-900"
+                      >
+                        Reset
+                      </button>
+                      <button
+                        onClick={() => setShowFilters(false)}
+                        className="px-3 py-1 text-sm bg-emerald-500 text-white rounded hover:bg-emerald-600"
+                      >
+                        Apply
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
-        <select className="border border-gray-200 rounded-lg px-4 py-2">
-          <option>All States</option>
-          <option>Healthy</option>
-          <option>Warning</option>
-          <option>Critical</option>
-        </select>
-        <button className="border border-gray-200 rounded-lg px-4 py-2 flex items-center gap-2">
-          <Filter className="w-5 h-5" />
-          More Filters
-        </button>
       </div>
 
       <div className="bg-white rounded-lg shadow-sm overflow-hidden">
