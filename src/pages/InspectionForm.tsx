@@ -37,10 +37,10 @@ interface RackForm {
 }
 
 const psuStatusOptions = ['Amber LED', 'Powered-Off', 'Other'];
-const psuIdOptions = ['PSU 1', 'PSU 2', 'PSU 3', 'PSU 4', 'PSU 5', 'PSU 6'];
+const psuIdOptions = ['PSU1', 'PSU2', 'PSU3', 'PSU4', 'PSU5', 'PSU6'];
 const uHeightOptions = Array.from({ length: 49 }, (_, i) => `U${i}`);
 const pduStatusOptions = ['Tripped Breaker', 'Powered-Off', 'Active Alarm', 'Other'];
-const pduIdOptions = ['PDU A', 'PDU B', 'PDU C'];
+const pduIdOptions = ['PDUA', 'PDUB', 'PDUC'];
 const rdhxStatusOptions = ['Water Leak', 'Powered-Off', 'Active Alarm', 'Other'];
 
 const InspectionForm = () => {
@@ -161,8 +161,9 @@ const InspectionForm = () => {
       if (hasIssues && racks.length > 0) {
         const incidentPromises = racks.map(async (rack) => {
           let description = '';
-          let part_type = 'Other'; // Default value
+          let part_type = 'Other';
           let part_identifier = '';
+          let severity = 'medium';
           
           if (rack.devices.powerSupplyUnit && rack.psuDetails) {
             part_type = 'PSU';
@@ -171,6 +172,7 @@ const InspectionForm = () => {
             if (rack.psuDetails.comments) {
               description += `, Comments: ${rack.psuDetails.comments}`;
             }
+            severity = rack.psuDetails.status === 'Powered-Off' ? 'critical' : 'high';
           } else if (rack.devices.powerDistributionUnit && rack.pduDetails) {
             part_type = 'PDU';
             part_identifier = rack.pduDetails.pduId;
@@ -178,13 +180,15 @@ const InspectionForm = () => {
             if (rack.pduDetails.comments) {
               description += `, Comments: ${rack.pduDetails.comments}`;
             }
+            severity = rack.pduDetails.status === 'Powered-Off' ? 'critical' : 'high';
           } else if (rack.devices.rearDoorHeatExchanger && rack.rdhxDetails) {
             part_type = 'RDHX';
-            part_identifier = 'RDHX-1';
+            part_identifier = 'RDHX1';
             description = `RDHX Issue - Status: ${rack.rdhxDetails.status}`;
             if (rack.rdhxDetails.comments) {
               description += `, Comments: ${rack.rdhxDetails.comments}`;
             }
+            severity = rack.rdhxDetails.status === 'Water Leak' ? 'critical' : 'high';
           }
 
           return supabase.from('incidents').insert({
@@ -192,11 +196,16 @@ const InspectionForm = () => {
             datahall: selectedDataHall,
             rack_number: rack.location,
             description,
-            severity: 'medium',
+            severity,
             status: 'open',
             user_id: user?.id,
             part_type,
-            part_identifier
+            part_identifier,
+            walkthrough_id: walkThroughNumber,
+            u_height: rack.devices.powerSupplyUnit ? rack.psuDetails?.uHeight : null,
+            comments: rack.devices.powerSupplyUnit ? rack.psuDetails?.comments :
+                     rack.devices.powerDistributionUnit ? rack.pduDetails?.comments :
+                     rack.devices.rearDoorHeatExchanger ? rack.rdhxDetails?.comments : null
           });
         });
 
