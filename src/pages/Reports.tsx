@@ -45,6 +45,7 @@ const Reports = () => {
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [loading, setLoading] = useState(true);
   const [generating, setGenerating] = useState(false);
+  const [reportNotFound, setReportNotFound] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [dateRange, setDateRange] = useState<[Date | null, Date | null]>([
     new Date(new Date().setDate(new Date().getDate() - 7)), // Last 7 days
@@ -57,6 +58,7 @@ const Reports = () => {
   const [showFilters, setShowFilters] = useState(false);
 
   const datacenters = [
+    'All Datacenters',
     'Canada - Quebec',
     'Norway - Enebakk',
     'Norway - Rjukan',
@@ -65,11 +67,11 @@ const Reports = () => {
   ];
 
   const datahalls = {
-    'Canada - Quebec': ['Island 1', 'Island 8', 'Island 9', 'Island 10', 'Island 11', 'Island 12', 'Green Nitrogen'],
-    'Norway - Enebakk': ['Flying Whale'],
-    'Norway - Rjukan': ['Flying Whale'],
-    'United States - Dallas': ['Island 1', 'Island 2', 'Island 3', 'Island 4'],
-    'United States - Houston': ['H20 Lab']
+    'Canada - Quebec': ['All Data Halls', 'Island 1', 'Island 8', 'Island 9', 'Island 10', 'Island 11', 'Island 12', 'Green Nitrogen'],
+    'Norway - Enebakk': ['All Data Halls', 'Flying Whale'],
+    'Norway - Rjukan': ['All Data Halls', 'Flying Whale'],
+    'United States - Dallas': ['All Data Halls', 'Island 1', 'Island 2', 'Island 3', 'Island 4'],
+    'United States - Houston': ['All Data Halls', 'H20 Lab']
   };
 
   useEffect(() => {
@@ -92,6 +94,7 @@ const Reports = () => {
       setReports(data || []);
     } catch (error) {
       console.error('Error fetching reports:', error);
+      setReports([]);
     } finally {
       setLoading(false);
     }
@@ -100,72 +103,96 @@ const Reports = () => {
   const fetchReportDetails = async (reportId: string) => {
     try {
       setLoading(true);
+      setReportNotFound(false);
       
-      // Fetch report details
+      // Fetch report details using maybeSingle() instead of single()
       const { data: reportData, error: reportError } = await supabase
         .from('reports')
         .select('*')
         .eq('id', reportId)
-        .single();
+        .maybeSingle();
 
       if (reportError) throw reportError;
+
+      if (!reportData) {
+        setReportNotFound(true);
+        setSelectedReport(null);
+        return;
+      }
+
       setSelectedReport(reportData);
 
-      // Fetch related incidents
-      if (reportData) {
-        const { data: incidentData, error: incidentError } = await supabase
-          .from('incidents')
-          .select('*')
-          .gte('created_at', reportData.date_range_start)
-          .lte('created_at', reportData.date_range_end)
-          .eq('location', reportData.datacenter)
-          .eq('datahall', reportData.datahall)
-          .order('created_at', { ascending: false });
+      // Only fetch incidents if we found a report
+      let query = supabase
+        .from('incidents')
+        .select('*')
+        .gte('created_at', reportData.date_range_start)
+        .lte('created_at', reportData.date_range_end);
 
-        if (incidentError) throw incidentError;
-        setIncidents(incidentData || []);
+      // Only apply location filters if specific values are selected
+      if (reportData.datacenter !== 'All Datacenters') {
+        query = query.eq('location', reportData.datacenter);
       }
+      if (reportData.datahall !== 'All Data Halls') {
+        query = query.eq('datahall', reportData.datahall);
+      }
+
+      const { data: incidentData, error: incidentError } = await query.order('created_at', { ascending: false });
+
+      if (incidentError) throw incidentError;
+      setIncidents(incidentData || []);
     } catch (error) {
       console.error('Error fetching report details:', error);
+      setIncidents([]);
     } finally {
       setLoading(false);
     }
   };
 
   const handleGenerateReport = async () => {
-    if (!dateRange[0] || !dateRange[1] || !selectedDatacenter || !selectedDatahall) {
-      alert('Please select date range, datacenter, and data hall');
+    if (!dateRange[0] || !dateRange[1] || !selectedDatacenter) {
+      alert('Please select date range and datacenter');
       return;
     }
 
     try {
       setGenerating(true);
 
-      // Fetch incidents for the selected criteria
-      const query = supabase
+      // Build the base query
+      let query = supabase
         .from('incidents')
         .select('*')
         .gte('created_at', dateRange[0].toISOString())
-        .lte('created_at', dateRange[1].toISOString())
-        .eq('location', selectedDatacenter)
-        .eq('datahall', selectedDatahall);
+        .lte('created_at', dateRange[1].toISOString());
 
+      // Only apply location filters if specific values are selected
+      if (selectedDatacenter !== 'All Datacenters') {
+        query = query.eq('location', selectedDatacenter);
+      }
+      if (selectedDatahall && selectedDatahall !== 'All Data Halls') {
+        query = query.eq('datahall', selectedDatahall);
+      }
       if (selectedSeverity) {
-        query.eq('severity', selectedSeverity);
+        query = query.eq('severity', selectedSeverity);
       }
       if (selectedStatus) {
-        query.eq('status', selectedStatus);
+        query = query.eq('status', selectedStatus);
       }
 
       const { data: incidents, error: incidentsError } = await query;
 
       if (incidentsError) throw incidentsError;
 
+      // Create title based on selected filters
+      const locationPart = selectedDatacenter === 'All Datacenters' 
+        ? 'All Locations' 
+        : `${selectedDatacenter}${selectedDatahall && selectedDatahall !== 'All Data Halls' ? ` - ${selectedDatahall}` : ''}`;
+
       // Create new report
       const { data: report, error: reportError } = await supabase
         .from('reports')
         .insert([{
-          title: `Incident Report - ${format(dateRange[0], 'MMM d, yyyy')} to ${format(dateRange[1], 'MMM d, yyyy')}`,
+          title: `Incident Report - ${locationPart}`,
           generated_by: user?.id,
           date_range_start: dateRange[0].toISOString(),
           date_range_end: dateRange[1].toISOString(),
@@ -176,7 +203,9 @@ const Reports = () => {
           report_data: {
             filters: {
               severity: selectedSeverity,
-              status: selectedStatus
+              status: selectedStatus,
+              datacenter: selectedDatacenter,
+              datahall: selectedDatahall
             },
             incidents: incidents
           }
@@ -196,53 +225,37 @@ const Reports = () => {
     }
   };
 
-  const downloadCSV = () => {
-    if (!incidents.length) return;
-
-    const headers = [
-      'ID',
-      'Location',
-      'Data Hall',
-      'Rack Number',
-      'Part Type',
-      'Part ID',
-      'U-Height',
-      'Severity',
-      'Status',
-      'Created At',
-      'Description',
-      'Comments'
-    ];
-
-    const csvContent = [
-      headers.join(','),
-      ...incidents.map(incident => [
-        incident.id,
-        incident.location,
-        incident.datahall,
-        incident.rack_number,
-        incident.part_type,
-        incident.part_identifier,
-        incident.u_height || '',
-        incident.severity,
-        incident.status,
-        format(new Date(incident.created_at), 'yyyy-MM-dd HH:mm:ss'),
-        `"${incident.description.replace(/"/g, '""')}"`,
-        `"${incident.comments?.replace(/"/g, '""') || ''}"`,
-      ].join(','))
-    ].join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `report_${selectedReport?.id}_incidents.csv`;
-    link.click();
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500"></div>
+      </div>
+    );
+  }
+
+  if (id && reportNotFound) {
+    return (
+      <div className="p-6">
+        <div className="max-w-6xl mx-auto">
+          <button
+            onClick={() => navigate('/reports')}
+            className="flex items-center text-gray-600 hover:text-gray-900 mb-6"
+          >
+            <ArrowLeft className="w-5 h-5 mr-2" />
+            Back to Reports
+          </button>
+
+          <div className="bg-white rounded-lg shadow-sm p-6 text-center">
+            <h2 className="text-2xl font-semibold text-gray-800 mb-4">Report Not Found</h2>
+            <p className="text-gray-600 mb-6">The report you're looking for doesn't exist or has been deleted.</p>
+            <button
+              onClick={() => navigate('/reports')}
+              className="px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors"
+            >
+              View All Reports
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
@@ -442,12 +455,16 @@ const Reports = () => {
               value={selectedDatahall}
               onChange={(e) => setSelectedDatahall(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md"
-              disabled={!selectedDatacenter}
+              disabled={!selectedDatacenter || selectedDatacenter === 'All Datacenters'}
             >
-              <option value="">Select Data Hall</option>
-              {selectedDatacenter && datahalls[selectedDatacenter as keyof typeof datahalls].map(hall => (
-                <option key={hall} value={hall}>{hall}</option>
-              ))}
+              <option value="">
+                {selectedDatacenter === 'All Datacenters' ? 'All Data Halls' : 'Select Data Hall'}
+              </option>
+              {selectedDatacenter && selectedDatacenter !== 'All Datacenters' && 
+                datahalls[selectedDatacenter as keyof typeof datahalls]?.map(hall => (
+                  <option key={hall} value={hall}>{hall}</option>
+                ))
+              }
             </select>
           </div>
 
@@ -470,7 +487,7 @@ const Reports = () => {
         <div className="flex justify-end">
           <button
             onClick={handleGenerateReport}
-            disabled={generating || !dateRange[0] || !dateRange[1] || !selectedDatacenter || !selectedDatahall}
+            disabled={generating || !dateRange[0] || !dateRange[1] || !selectedDatacenter}
             className="px-4 py-2 bg-emerald-500 text-white rounded-lg hover:bg-emerald-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
           >
             {generating ? (
@@ -491,33 +508,39 @@ const Reports = () => {
       <div className="bg-white rounded-lg shadow-sm p-6">
         <h2 className="text-lg font-medium mb-6">Recent Reports</h2>
         <div className="grid md:grid-cols-3 gap-6">
-          {reports.map((report) => (
-            <div
-              key={report.id}
-              className="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer border border-gray-100"
-              onClick={() => navigate(`/reports/${report.id}`)}
-            >
-              <div 
-                className="relative h-48 bg-cover bg-center"
-                style={{ 
-                  backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.7)), url(https://images.pexels.com/photos/325229/pexels-photo-325229.jpeg)`,
-                }}
+          {reports && reports.length > 0 ? (
+            reports.map((report) => (
+              <div
+                key={report.id}
+                className="bg-white rounded-lg overflow-hidden shadow-sm hover:shadow-md transition-shadow cursor-pointer border border-gray-100"
+                onClick={() => navigate(`/reports/${report.id}`)}
               >
-                <div className="absolute inset-0 p-6 flex flex-col justify-end">
-                  <h3 className="text-xl font-medium text-white mb-2">
-                    {report.title}
-                  </h3>
-                  <p className="text-sm text-gray-200">{report.datacenter} - {report.datahall}</p>
+                <div 
+                  className="relative h-48 bg-cover bg-center"
+                  style={{ 
+                    backgroundImage: `linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.7)), url(https://images.pexels.com/photos/325229/pexels-photo-325229.jpeg)`,
+                  }}
+                >
+                  <div className="absolute inset-0 p-6 flex flex-col justify-end">
+                    <h3 className="text-xl font-medium text-white mb-2">
+                      {report.title}
+                    </h3>
+                    <p className="text-sm text-gray-200">{report.datacenter} - {report.datahall}</p>
+                  </div>
+                </div>
+                <div className="p-4 bg-white">
+                  <div className="flex justify-between items-center text-sm text-gray-600">
+                    <span>Issues: {report.total_incidents}</span>
+                    <span>{format(new Date(report.generated_at), 'MMM d, yyyy')}</span>
+                  </div>
                 </div>
               </div>
-              <div className="p-4 bg-white">
-                <div className="flex justify-between items-center text-sm text-gray-600">
-                  <span>Issues: {report.total_incidents}</span>
-                  <span>{format(new Date(report.generated_at), 'MMM d, yyyy')}</span>
-                </div>
-              </div>
+            ))
+          ) : (
+            <div className="col-span-3 text-center py-8 text-gray-500">
+              No reports found. Generate a new report to get started.
             </div>
-          ))}
+          )}
         </div>
       </div>
     </div>

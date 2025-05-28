@@ -8,12 +8,12 @@ import "react-datepicker/dist/react-datepicker.css";
 
 interface Inspection {
   Id: string;
-  UserEmail: string;
+  GeneratedBy: string;
   Timestamp: string;
   datacenter: string;
   datahall: string;
   issues_reported: number;
-  state: 'Healthy' | 'Warning' | 'Critical';
+  state: string;
   walkthrough_id: number;
   user_full_name: string;
   ReportData: {
@@ -294,7 +294,7 @@ const Inspections = () => {
                   <tr 
                     key={inspection.Id}
                     className="hover:bg-gray-50 cursor-pointer"
-                    onClick={() => navigate(`/reports/${inspection.Id}`)}
+                    onClick={() => navigate(`/inspections/${inspection.Id}`)}
                   >
                     <td className="px-6 py-4 text-sm text-gray-900">{inspection.datacenter}</td>
                     <td className="px-6 py-4 text-sm text-gray-900">{inspection.datahall}</td>
