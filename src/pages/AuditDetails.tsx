@@ -1,17 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, AlertTriangle, CheckCircle, Clock, User, MapPin, Building } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, CheckCircle, Clock, User, MapPin, Building, Download } from 'lucide-react';
 import { format } from 'date-fns';
 import { supabase } from '../lib/supabaseClient';
 
 interface AuditReport {
   Id: string;
-  UserEmail: string;
+  GeneratedBy: string;
   Timestamp: string;
   datacenter: string;
   datahall: string;
   issues_reported: number;
-  state: 'Healthy' | 'Warning' | 'Critical';
+  state: string;
   walkthrough_id: number;
   user_full_name: string;
   ReportData: {
@@ -76,6 +76,69 @@ const AuditDetails = () => {
     }
   };
 
+  const downloadCSV = () => {
+    if (!audit?.ReportData?.racks) return;
+
+    const headers = [
+      'Rack Location',
+      'Device Type',
+      'Status',
+      'Device ID',
+      'U-Height',
+      'Comments'
+    ];
+
+    const rows = audit.ReportData.racks.flatMap(rack => {
+      const rows = [];
+
+      if (rack.devices.powerSupplyUnit && rack.psuDetails) {
+        rows.push([
+          rack.location,
+          'Power Supply Unit',
+          rack.psuDetails.status,
+          rack.psuDetails.psuId,
+          rack.psuDetails.uHeight,
+          rack.psuDetails.comments || ''
+        ]);
+      }
+
+      if (rack.devices.powerDistributionUnit && rack.pduDetails) {
+        rows.push([
+          rack.location,
+          'Power Distribution Unit',
+          rack.pduDetails.status,
+          rack.pduDetails.pduId,
+          'N/A',
+          rack.pduDetails.comments || ''
+        ]);
+      }
+
+      if (rack.devices.rearDoorHeatExchanger && rack.rdhxDetails) {
+        rows.push([
+          rack.location,
+          'Rear Door Heat Exchanger',
+          rack.rdhxDetails.status,
+          'RDHX',
+          'N/A',
+          rack.rdhxDetails.comments || ''
+        ]);
+      }
+
+      return rows;
+    });
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `audit_${audit.walkthrough_id}_details.csv`;
+    link.click();
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -131,15 +194,26 @@ const AuditDetails = () => {
                 {audit.user_full_name}
               </div>
             </div>
-            <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-              audit.issues_reported === 0 
-                ? 'bg-green-100 text-green-800'
-                : audit.state === 'Critical'
-                  ? 'bg-red-100 text-red-800'
-                  : 'bg-yellow-100 text-yellow-800'
-            }`}>
-              {audit.issues_reported === 0 ? 'Healthy' : audit.state}
-            </span>
+            <div className="flex gap-4">
+              {audit.ReportData.racks && audit.ReportData.racks.length > 0 && (
+                <button
+                  onClick={downloadCSV}
+                  className="flex items-center gap-2 px-4 py-2 text-emerald-600 border border-emerald-200 rounded-lg hover:bg-emerald-50"
+                >
+                  <Download className="w-5 h-5" />
+                  Download CSV
+                </button>
+              )}
+              <span className={`px-3 py-1 rounded-full text-sm font-medium ${
+                audit.issues_reported === 0 
+                  ? 'bg-green-100 text-green-800'
+                  : audit.state === 'Critical'
+                    ? 'bg-red-100 text-red-800'
+                    : 'bg-yellow-100 text-yellow-800'
+              }`}>
+                {audit.issues_reported === 0 ? 'Healthy' : audit.state}
+              </span>
+            </div>
           </div>
 
           <div className="border-t border-gray-100 pt-6">
