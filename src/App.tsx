@@ -17,6 +17,7 @@ import Login from './pages/Login';
 import NotFound from './pages/NotFound';
 import ProtectedRoute from './components/ProtectedRoute';
 import ErrorBoundaryComponent from './components/ErrorBoundaryComponent';
+import AuditDetails from './pages/AuditDetails';
 
 const App = () => {
   return (
@@ -35,15 +36,16 @@ const App = () => {
                   <Route element={<Layout />}>
                     <Route index element={<Dashboard />} />
                     <Route path="inspections" element={<Inspections />} />
+                    <Route path="inspections/:id" element={<AuditDetails />} />
                     <Route path="inspection" element={<InspectionForm />} />
                     <Route path="incidents" element={<Incidents />} />
                     <Route path="confirmation" element={<Confirmation />} />
                     <Route path="reports" element={<Reports />} />
                     <Route path="reports/new" element={<ReportForm />} />
-                    <Route path="reports/:id" element={<Reports />} />
+                    <Route path="reports/:id" element={<AuditDetails />} />
                     <Route path="profile" element={<Profile />} />
                     <Route path="not-found" element={<NotFound />} />
-                    <Route path="*" element={<Navigate to="/not-found\" replace />} />
+                    <Route path="*" element={<Navigate to="/not-found" replace />} />
                   </Route>
                 </Route>
               </Routes>
