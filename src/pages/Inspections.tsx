@@ -56,13 +56,10 @@ const Inspections = () => {
   return (
     <div className="p-6">
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-2xl font-semibold">Recent Audits</h1>
-        <button
-          onClick={() => navigate('/inspection')}
-          className="bg-emerald-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-emerald-600"
-        >
-          Start Walkthrough
-        </button>
+        <div>
+          <h1 className="text-2xl font-semibold mb-2">Recent Audits</h1>
+          <p className="text-gray-600">View and manage datacenter audits</p>
+        </div>
       </div>
 
       <div className="flex gap-4 mb-8">
