@@ -8,16 +8,17 @@ import DatePicker from 'react-datepicker';
 import "react-datepicker/dist/react-datepicker.css";
 
 interface Report {
-  Id: string;
-  GeneratedBy: string;
-  Timestamp: string;
+  id: string;
+  title: string;
+  generated_by: string;
+  generated_at: string;
+  date_range_start: string;
+  date_range_end: string;
   datacenter: string;
   datahall: string;
-  issues_reported: number;
-  state: string;
-  user_full_name: string;
-  walkthrough_id: number;
-  ReportData: any;
+  status: string;
+  total_incidents: number;
+  report_data: any;
 }
 
 const Reports = () => {
@@ -27,8 +28,8 @@ const Reports = () => {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [dateRange, setDateRange] = useState<[Date | null, Date | null]>([
-    new Date(new Date().setDate(new Date().getDate() - new Date().getDay())), // Start of current week
-    new Date(new Date().setDate(new Date().getDate() - new Date().getDay() + 6)) // End of current week
+    new Date(new Date().setDate(new Date().getDate() - 7)), // Last 7 days
+    new Date()
   ]);
   const [selectedDatacenter, setSelectedDatacenter] = useState('');
   const [selectedDatahall, setSelectedDatahall] = useState('');
@@ -59,9 +60,9 @@ const Reports = () => {
     try {
       setLoading(true);
       const { data, error } = await supabase
-        .from('AuditReports')
+        .from('reports')
         .select('*')
-        .order('Timestamp', { ascending: false });
+        .order('generated_at', { ascending: false });
 
       if (error) throw error;
       setReports(data || []);
@@ -77,34 +78,49 @@ const Reports = () => {
   };
 
   const handleGenerateReport = async () => {
+    if (!dateRange[0] || !dateRange[1]) {
+      alert('Please select a date range');
+      return;
+    }
+
     try {
       setGeneratingReport(true);
 
-      // Get the latest walkthrough ID
-      const { data: latestReport } = await supabase
-        .from('AuditReports')
-        .select('walkthrough_id')
-        .order('walkthrough_id', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+      // Fetch incidents for the selected criteria
+      const { data: incidents, error: incidentsError } = await supabase
+        .from('incidents')
+        .select('*')
+        .gte('created_at', dateRange[0].toISOString())
+        .lte('created_at', dateRange[1].toISOString())
+        .order('created_at', { ascending: false });
 
-      const nextWalkthroughId = (latestReport?.walkthrough_id || 0) + 1;
+      if (incidentsError) throw incidentsError;
 
-      // Insert new report into AuditReports
-      const { data, error } = await supabase
-        .from('AuditReports')
+      // Filter incidents by datacenter/datahall if selected
+      const filteredIncidents = incidents?.filter(incident => {
+        if (selectedDatacenter && incident.location !== selectedDatacenter) return false;
+        if (selectedDatahall && incident.datahall !== selectedDatahall) return false;
+        return true;
+      });
+
+      // Create new report
+      const { data: report, error: reportError } = await supabase
+        .from('reports')
         .insert([{
-          GeneratedBy: user?.email,
-          user_full_name: user?.user_metadata?.full_name || user?.email,
+          title: `Incident Report - ${format(dateRange[0], 'MMM d, yyyy')} to ${format(dateRange[1], 'MMM d, yyyy')}`,
+          generated_by: user?.id,
+          date_range_start: dateRange[0].toISOString(),
+          date_range_end: dateRange[1].toISOString(),
           datacenter: selectedDatacenter || 'All Locations',
           datahall: selectedDatahall || 'All Data Halls',
-          state: selectedStatus || 'Healthy',
-          issues_reported: 0,
-          walkthrough_id: nextWalkthroughId,
-          ReportData: {
-            date_range: {
-              start: dateRange[0]?.toISOString(),
-              end: dateRange[1]?.toISOString()
+          status: 'generated',
+          total_incidents: filteredIncidents?.length || 0,
+          report_data: {
+            incidents: filteredIncidents,
+            filters: {
+              datacenter: selectedDatacenter,
+              datahall: selectedDatahall,
+              status: selectedStatus
             },
             generated_at: new Date().toISOString(),
             generated_by: user?.email
@@ -113,40 +129,34 @@ const Reports = () => {
         .select()
         .single();
 
-      if (error) throw error;
+      if (reportError) throw reportError;
 
       // Navigate to the new report
-      navigate(`/reports/${data.Id}`);
+      navigate(`/reports/${report.id}`);
     } catch (error) {
       console.error('Error generating report:', error);
+      alert('Failed to generate report. Please try again.');
     } finally {
       setGeneratingReport(false);
     }
   };
 
-  const getStatusColor = (state: string) => {
-    switch (state) {
-      case 'Healthy':
-        return 'bg-emerald-100 text-emerald-800';
-      case 'Warning':
-        return 'bg-amber-100 text-amber-800';
-      case 'Critical':
-        return 'bg-red-100 text-red-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
+  const getStatusColor = (total_incidents: number) => {
+    if (total_incidents === 0) return 'bg-emerald-100 text-emerald-800';
+    if (total_incidents > 5) return 'bg-red-100 text-red-800';
+    return 'bg-amber-100 text-amber-800';
   };
 
-  const getTypeIcon = (issues: number) => {
-    if (issues > 5) return '⚠️';
-    if (issues > 0) return '🔍';
-    return '✅';
+  const getStatusText = (total_incidents: number) => {
+    if (total_incidents === 0) return 'No Issues';
+    if (total_incidents > 5) return 'Critical';
+    return 'Warning';
   };
 
   const filteredReports = reports.filter(report =>
     report.datacenter.toLowerCase().includes(searchTerm.toLowerCase()) ||
     report.datahall.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    report.user_full_name.toLowerCase().includes(searchTerm.toLowerCase())
+    report.title.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -154,29 +164,20 @@ const Reports = () => {
       <div className="flex justify-between items-center mb-8">
         <div>
           <h1 className="text-2xl font-semibold mb-2">Reports</h1>
-          <p className="text-gray-600">View and manage your reports</p>
+          <p className="text-gray-600">Generate and view incident reports</p>
         </div>
-        <div className="flex gap-4">
-          <button
-            onClick={handleGenerateReport}
-            disabled={generatingReport}
-            className="bg-emerald-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-emerald-600 transition-colors disabled:opacity-50"
-          >
-            <FileDown className="w-5 h-5" />
-            {generatingReport ? 'Generating...' : 'Start Walkthrough'}
-          </button>
-          <button
-            onClick={handleCreateReport}
-            className="bg-emerald-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-emerald-600 transition-colors"
-          >
-            <Plus className="w-5 h-5" />
-            Create Report
-          </button>
-        </div>
+        <button
+          onClick={handleGenerateReport}
+          disabled={generatingReport}
+          className="bg-emerald-500 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-emerald-600 transition-colors disabled:opacity-50"
+        >
+          <FileDown className="w-5 h-5" />
+          {generatingReport ? 'Generating...' : 'Generate Report'}
+        </button>
       </div>
 
       <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
-        <h2 className="text-lg font-medium mb-4">Walkthrough Filters</h2>
+        <h2 className="text-lg font-medium mb-4">Report Filters</h2>
         <div className="flex flex-wrap gap-4 mb-6">
           <div className="flex-1 min-w-[200px]">
             <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -251,9 +252,9 @@ const Reports = () => {
               className="w-full px-4 py-2 border border-gray-300 rounded-md"
             >
               <option value="">All Statuses</option>
-              <option value="Healthy">Healthy</option>
-              <option value="Warning">Warning</option>
-              <option value="Critical">Critical</option>
+              <option value="open">Open</option>
+              <option value="in-progress">In Progress</option>
+              <option value="resolved">Resolved</option>
             </select>
           </div>
         </div>
@@ -284,45 +285,46 @@ const Reports = () => {
           </div>
           <h3 className="text-lg font-medium text-gray-900 mb-2">No Reports Found</h3>
           <p className="text-gray-600 mb-6">
-            Try adjusting your search or start a new walkthrough
+            Generate a new report using the filters above
           </p>
           <button
             onClick={handleGenerateReport}
-            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-emerald-500 hover:bg-emerald-600 transition-colors"
+            disabled={generatingReport}
+            className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-emerald-500 hover:bg-emerald-600 transition-colors disabled:opacity-50"
           >
-            <Plus className="w-5 h-5 mr-2" />
-            Start Walkthrough
+            <FileDown className="w-5 h-5 mr-2" />
+            Generate Report
           </button>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredReports.map((report) => (
             <div
-              key={report.Id}
+              key={report.id}
               className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow cursor-pointer"
-              onClick={() => navigate(`/reports/${report.Id}`)}
+              onClick={() => navigate(`/reports/${report.id}`)}
             >
               <div className="p-6">
                 <div className="flex items-start justify-between mb-4">
-                  <div className="flex items-center">
-                    <span className="text-2xl mr-3">{getTypeIcon(report.issues_reported)}</span>
-                    <div>
-                      <h3 className="text-lg font-medium text-gray-900 mb-1">
-                        {report.datacenter}
-                      </h3>
+                  <div>
+                    <h3 className="text-lg font-medium text-gray-900 mb-1">
+                      {report.title}
+                    </h3>
+                    <p className="text-sm text-gray-600">{report.datacenter}</p>
+                    {report.datahall && (
                       <p className="text-sm text-gray-600">{report.datahall}</p>
-                    </div>
+                    )}
                   </div>
-                  <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${getStatusColor(report.state)}`}>
-                    {report.state}
+                  <span className={`px-2.5 py-1 rounded-full text-xs font-medium ${getStatusColor(report.total_incidents)}`}>
+                    {getStatusText(report.total_incidents)}
                   </span>
                 </div>
-                <p className="text-gray-600 text-sm mb-4 line-clamp-2">
-                  {`Issues reported: ${report.issues_reported}`}
+                <p className="text-gray-600 text-sm mb-4">
+                  {`Total Incidents: ${report.total_incidents}`}
                 </p>
                 <div className="flex items-center text-sm text-gray-500">
                   <Calendar className="w-4 h-4 mr-2" />
-                  {format(new Date(report.Timestamp), 'MMM d, yyyy')}
+                  {format(new Date(report.generated_at), 'MMM d, yyyy')}
                 </div>
               </div>
             </div>
@@ -331,6 +333,4 @@ const Reports = () => {
       )}
     </div>
   );
-};
-
-export default Reports;
+}
