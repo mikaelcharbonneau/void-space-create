@@ -18,33 +18,35 @@ interface Issue {
 }
 
 // Update table headers and row rendering
-<thead>
-  <tr>
-    <th>Datacenter</th>
-    <th>Data Hall</th>
-    <th>Rack</th>
-    <th>Part Type</th>
-    <th>Part ID</th>
-    <th>U Height</th>
-    <th>Status</th>
-    <th>Severity</th>
-    <th>Comments</th>
-    <th>Date</th>
-  </tr>
-</thead>
-<tbody>
-  {filteredIssues.map((issue) => (
-    <tr key={issue.id}>
-      <td>{issue.datacenter}</td>
-      <td>{issue.datahall}</td>
-      <td>{issue.rack_number}</td>
-      <td>{issue.part_type}</td>
-      <td>{issue.part_identifier}</td>
-      <td>{issue.u_height || '-'}</td>
-      <td>{issue.status}</td>
-      <td>{issue.severity}</td>
-      <td>{issue.comments || '-'}</td>
-      <td>{format(new Date(issue.reported_at), 'MMM d, yyyy')}</td>
+<table>
+  <thead>
+    <tr>
+      <th>Datacenter</th>
+      <th>Data Hall</th>
+      <th>Rack</th>
+      <th>Part Type</th>
+      <th>Part ID</th>
+      <th>U Height</th>
+      <th>Status</th>
+      <th>Severity</th>
+      <th>Comments</th>
+      <th>Date</th>
     </tr>
-  ))}
-</tbody>
+  </thead>
+  <tbody>
+    {filteredIssues.map((issue) => (
+      <tr key={issue.id}>
+        <td>{issue.datacenter}</td>
+        <td>{issue.datahall}</td>
+        <td>{issue.rack_number}</td>
+        <td>{issue.part_type}</td>
+        <td>{issue.part_identifier}</td>
+        <td>{issue.u_height || '-'}</td>
+        <td>{issue.status}</td>
+        <td>{issue.severity}</td>
+        <td>{issue.comments || '-'}</td>
+        <td>{format(new Date(issue.reported_at), 'MMM d, yyyy')}</td>
+      </tr>
+    ))}
+  </tbody>
+</table>
