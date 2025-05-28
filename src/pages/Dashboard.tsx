@@ -74,7 +74,7 @@ const Dashboard = () => {
   };
 
   const handleLocationSelect = (location: string) => {
-    navigate('/inspection', { 
+    navigate('/inspection/form', { 
       state: { selectedLocation: location }
     });
     setShowLocationDropdown(false);
