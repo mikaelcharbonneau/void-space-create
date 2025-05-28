@@ -17,12 +17,11 @@ const ReportForm = () => {
   ]);
   const [formData, setFormData] = useState({
     datacenter: '',
-    datahall: '',
-    state: 'Healthy',
-    issues_reported: 0
+    datahall: ''
   });
 
   const datacenters = [
+    'All Datacenters',
     'Canada - Quebec',
     'Norway - Enebakk',
     'Norway - Rjukan',
@@ -31,11 +30,11 @@ const ReportForm = () => {
   ];
 
   const datahalls = {
-    'Canada - Quebec': ['Island 1', 'Island 8', 'Island 9', 'Island 10', 'Island 11', 'Island 12', 'Green Nitrogen'],
-    'Norway - Enebakk': ['Flying Whale'],
-    'Norway - Rjukan': ['Flying Whale'],
-    'United States - Dallas': ['Island 1', 'Island 2', 'Island 3', 'Island 4'],
-    'United States - Houston': ['H20 Lab']
+    'Canada - Quebec': ['All Data Halls', 'Island 1', 'Island 8', 'Island 9', 'Island 10', 'Island 11', 'Island 12', 'Green Nitrogen'],
+    'Norway - Enebakk': ['All Data Halls', 'Flying Whale'],
+    'Norway - Rjukan': ['All Data Halls', 'Flying Whale'],
+    'United States - Dallas': ['All Data Halls', 'Island 1', 'Island 2', 'Island 3', 'Island 4'],
+    'United States - Houston': ['All Data Halls', 'H20 Lab']
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -43,22 +42,35 @@ const ReportForm = () => {
     setLoading(true);
 
     try {
-      // Fetch incidents for the selected date range and location
-      const { data: incidents, error: incidentsError } = await supabase
+      // Build the query for incidents
+      let query = supabase
         .from('incidents')
         .select('*')
         .gte('created_at', dateRange[0]?.toISOString() || '')
-        .lte('created_at', dateRange[1]?.toISOString() || '')
-        .eq('location', formData.datacenter)
-        .eq('datahall', formData.datahall);
+        .lte('created_at', dateRange[1]?.toISOString() || '');
+
+      // Add location filter if specific datacenter is selected
+      if (formData.datacenter && formData.datacenter !== 'All Datacenters') {
+        query = query.eq('location', formData.datacenter);
+      }
+
+      // Add datahall filter if specific datahall is selected
+      if (formData.datahall && formData.datahall !== 'All Data Halls') {
+        query = query.eq('datahall', formData.datahall);
+      }
+
+      // Fetch incidents
+      const { data: incidents, error: incidentsError } = await query;
 
       if (incidentsError) throw incidentsError;
 
-      // Create the report with incident data
+      // Create the report
       const { data: report, error: reportError } = await supabase
         .from('reports')
         .insert([{
-          title: `Incident Report - ${formData.datacenter} - ${formData.datahall}`,
+          title: `Incident Report - ${formData.datacenter === 'All Datacenters' ? 'All Locations' : formData.datacenter}${
+            formData.datahall && formData.datahall !== 'All Data Halls' ? ` - ${formData.datahall}` : ''
+          }`,
           generated_by: user?.id,
           date_range_start: dateRange[0]?.toISOString(),
           date_range_end: dateRange[1]?.toISOString(),
@@ -117,7 +129,7 @@ const ReportForm = () => {
 
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
                 Date Range *
               </label>
               <div className="flex gap-4">
@@ -144,7 +156,7 @@ const ReportForm = () => {
             </div>
 
             <div>
-              <label htmlFor="datacenter" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="datacenter" className="block text-sm font-medium text-gray-700 mb-2">
                 Datacenter *
               </label>
               <select
@@ -163,22 +175,23 @@ const ReportForm = () => {
             </div>
 
             <div>
-              <label htmlFor="datahall" className="block text-sm font-medium text-gray-700 mb-1">
-                Data Hall *
+              <label htmlFor="datahall" className="block text-sm font-medium text-gray-700 mb-2">
+                Data Hall
               </label>
               <select
                 id="datahall"
                 name="datahall"
-                required
                 value={formData.datahall}
                 onChange={handleChange}
                 className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                disabled={!formData.datacenter}
+                disabled={!formData.datacenter || formData.datacenter === 'All Datacenters'}
               >
                 <option value="">Select Data Hall</option>
-                {formData.datacenter && datahalls[formData.datacenter as keyof typeof datahalls].map(hall => (
-                  <option key={hall} value={hall}>{hall}</option>
-                ))}
+                {formData.datacenter && formData.datacenter !== 'All Datacenters' && 
+                  datahalls[formData.datacenter as keyof typeof datahalls].map(hall => (
+                    <option key={hall} value={hall}>{hall}</option>
+                  ))
+                }
               </select>
             </div>
 
@@ -192,7 +205,7 @@ const ReportForm = () => {
               </button>
               <button
                 type="submit"
-                disabled={loading || !dateRange[0] || !dateRange[1] || !formData.datacenter || !formData.datahall}
+                disabled={loading || !dateRange[0] || !dateRange[1] || !formData.datacenter}
                 className="px-4 py-2 bg-emerald-500 text-white rounded-md hover:bg-emerald-600 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {loading ? 'Generating...' : 'Generate Report'}
