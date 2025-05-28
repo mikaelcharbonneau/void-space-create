@@ -56,7 +56,7 @@ const Header = () => {
             color="text-strong" 
             size="medium"
           >
-            Datacenter Audits
+            Datacenter Audit Tool
           </Text>
         </Box>
 
