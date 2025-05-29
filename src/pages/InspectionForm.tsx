@@ -1,8 +1,9 @@
+
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronDown, ChevronUp, Server } from 'lucide-react';
-import { supabase } from '../../lib/supabaseClient';
-import { rackLocations } from '../../utils/rackLocations';
+import { supabase } from '../lib/supabaseClient';
+import { rackLocations } from '../utils/rackLocations';
 
 interface InspectionFormProps {
   selectedLocation: string;
@@ -169,7 +170,7 @@ export const InspectionForm = ({ selectedLocation, selectedDataHall }: Inspectio
                         className="w-full px-4 py-2.5 border border-gray-300 rounded-md focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                       >
                         <option value="">Select tile location</option>
-                        {availableRacks.map(rackId => (
+                        {availableRacks.map((rackId: string) => (
                           <option key={rackId} value={rackId}>{rackId}</option>
                         ))}
                       </select>

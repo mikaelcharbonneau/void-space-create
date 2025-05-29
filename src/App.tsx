@@ -8,7 +8,7 @@ import Layout from './components/layout/Layout';
 import Dashboard from './pages/Dashboard';
 import Inspections from './pages/Inspections';
 import InspectionFlow from './pages/InspectionFlow';
-import InspectionForm from './pages/InspectionForm';
+import { InspectionForm } from './pages/InspectionForm';
 import AuditDetails from './pages/AuditDetails';
 import Incidents from './pages/Incidents';
 import IncidentDetails from './pages/IncidentDetails';
@@ -49,7 +49,7 @@ const App = () => {
                     <Route path="reports/:id" element={<Reports />} />
                     <Route path="profile" element={<Profile />} />
                     <Route path="not-found" element={<NotFound />} />
-                    <Route path="*" element={<Navigate to="/not-found\" replace />} />
+                    <Route path="*" element={<Navigate to="/not-found" replace />} />
                   </Route>
                 </Route>
               </Routes>
