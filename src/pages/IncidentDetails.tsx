@@ -1,222 +1,238 @@
-import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, AlertTriangle, Clock, MapPin, Server, PenTool as Tool } from 'lucide-react';
-import { format } from 'date-fns';
-import { supabase } from '../lib/supabaseClient';
-
-interface Incident {
-  id: string;
-  location: string;
-  datahall: string;
-  rack_number: string;
-  part_type: string;
-  part_identifier: string;
-  u_height?: string;
-  severity: 'critical' | 'high' | 'medium' | 'low';
-  status: 'open' | 'in-progress' | 'resolved';
-  created_at: string;
-  updated_at: string;
-  description: string;
-  comments?: string;
-  user_id: string;
-  walkthrough_id: number;
-}
+import { useState, useEffect } from 'react';
+import { Box, Button, Card, CardBody, CardHeader, Text, Spinner } from 'grommet';
+import { ArrowLeft, AlertTriangle, CheckCircle, Clock, User, Calendar, MessageSquare } from 'lucide-react';
+import { Issue } from '../types';
 
 const IncidentDetails = () => {
-  const { id } = useParams();
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [incident, setIncident] = useState<Incident | null>(null);
+  const [incident, setIncident] = useState<Issue | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchIncidentDetails();
+    // Fetch incident details
+    const fetchIncident = async () => {
+      try {
+        // This would be replaced with an actual API call
+        setTimeout(() => {
+          setIncident({
+            id: id || '1',
+            title: 'Cooling System Malfunction',
+            description: 'The cooling system in Data Hall A has been experiencing intermittent failures over the past 24 hours. Temperature readings have fluctuated between normal ranges and up to 5°C above acceptable thresholds.',
+            status: 'in-progress',
+            priority: 'high',
+            createdAt: '2023-11-15T10:30:00Z',
+            updatedAt: '2023-11-16T08:45:00Z',
+            assignedTo: 'jane.smith@example.com',
+            severity: 'Major'
+          });
+          setLoading(false);
+        }, 1000);
+      } catch (error) {
+        console.error('Error fetching incident:', error);
+        setLoading(false);
+      }
+    };
+
+    fetchIncident();
   }, [id]);
 
-  const fetchIncidentDetails = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const { data, error } = await supabase
-        .from('incidents')
-        .select('*')
-        .eq('id', id)
-        .single();
-
-      if (error) throw error;
-      setIncident(data);
-    } catch (error: any) {
-      console.error('Error fetching incident details:', error);
-      setError(error.message);
-    } finally {
-      setLoading(false);
+  const getStatusIcon = () => {
+    if (!incident) return null;
+    
+    switch (incident.status) {
+      case 'open':
+        return <AlertTriangle className="w-5 h-5 text-yellow-500" />;
+      case 'in-progress':
+        return <Clock className="w-5 h-5 text-blue-500" />;
+      case 'resolved':
+        return <CheckCircle className="w-5 h-5 text-green-500" />;
+      case 'closed':
+        return <CheckCircle className="w-5 h-5 text-gray-500" />;
+      default:
+        return null;
     }
   };
 
-  const formatIncidentId = (incident: Incident) => {
-    const walkthrough = `A${incident.walkthrough_id}`;
-    const rack = incident.rack_number.replace(/[^0-9]/g, '');
-    const partId = incident.part_identifier.replace(/\s+/g, '').toUpperCase();
-    return `${walkthrough}-${rack}-${partId}`;
+  const getPriorityColor = () => {
+    if (!incident) return 'gray';
+    
+    switch (incident.priority) {
+      case 'critical':
+        return 'red';
+      case 'high':
+        return 'orange';
+      case 'medium':
+        return 'yellow';
+      case 'low':
+        return 'green';
+      default:
+        return 'gray';
+    }
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500"></div>
-      </div>
+      <Box fill align="center" justify="center">
+        <Spinner />
+        <Text margin={{ top: 'small' }}>Loading incident details...</Text>
+      </Box>
     );
   }
 
-  if (error || !incident) {
+  if (!incident) {
     return (
-      <div className="p-6">
-        <div className="max-w-3xl mx-auto bg-white rounded-lg shadow-sm p-6">
-          <h1 className="text-2xl font-semibold text-red-600 mb-4">Error</h1>
-          <p className="text-gray-600 mb-4">
-            {error || 'Failed to load incident details'}
-          </p>
-          <button
-            onClick={() => navigate('/incidents')}
-            className="flex items-center text-emerald-600 hover:text-emerald-700"
-          >
-            <ArrowLeft className="w-5 h-5 mr-2" />
-            Back to Incidents
-          </button>
-        </div>
-      </div>
+      <Box pad="medium">
+        <Text>Incident not found</Text>
+        <Button label="Back to Incidents" onClick={() => navigate('/incidents')} margin={{ top: 'medium' }} />
+      </Box>
     );
   }
-
-  const getSeverityColor = (severity: string) => {
-    switch (severity) {
-      case 'critical':
-        return 'bg-red-100 text-red-800';
-      case 'high':
-        return 'bg-orange-100 text-orange-800';
-      case 'medium':
-        return 'bg-yellow-100 text-yellow-800';
-      default:
-        return 'bg-green-100 text-green-800';
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'open':
-        return 'bg-red-100 text-red-800';
-      case 'in-progress':
-        return 'bg-yellow-100 text-yellow-800';
-      default:
-        return 'bg-green-100 text-green-800';
-    }
-  };
 
   return (
-    <div className="p-6">
-      <div className="max-w-4xl mx-auto">
-        <button
+    <Box pad="medium">
+      <Box direction="row" align="center" margin={{ bottom: 'medium' }}>
+        <Button
+          icon={<ArrowLeft size={16} />}
+          label="Back to Incidents"
           onClick={() => navigate('/incidents')}
-          className="flex items-center text-gray-600 hover:text-gray-900 mb-6"
-        >
-          <ArrowLeft className="w-5 h-5 mr-2" />
-          Back to Incidents
-        </button>
+          plain
+        />
+      </Box>
 
-        <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-          <div className="p-6">
-            <div className="flex justify-between items-start mb-6">
-              <div>
-                <div className="flex items-center gap-3 mb-2">
-                  <AlertTriangle className={`w-6 h-6 ${
-                    incident.severity === 'critical' ? 'text-red-500' :
-                    incident.severity === 'high' ? 'text-orange-500' :
-                    incident.severity === 'medium' ? 'text-yellow-500' :
-                    'text-green-500'
-                  }`} />
-                  <h1 className="text-2xl font-semibold">Incident {formatIncidentId(incident)}</h1>
-                </div>
-                <div className="flex items-center text-gray-600 gap-4">
-                  <div className="flex items-center">
-                    <Clock className="w-4 h-4 mr-2" />
-                    {format(new Date(incident.created_at), 'PPpp')}
-                  </div>
-                  <div className="flex items-center">
-                    <MapPin className="w-4 h-4 mr-2" />
-                    {incident.location}
-                  </div>
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <span className={`px-3 py-1 rounded-full text-sm font-medium ${getSeverityColor(incident.severity)}`}>
-                  {incident.severity.charAt(0).toUpperCase() + incident.severity.slice(1)}
-                </span>
-                <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(incident.status)}`}>
-                  {incident.status.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')}
-                </span>
-              </div>
-            </div>
+      <Box direction="row" align="center" justify="between" margin={{ bottom: 'medium' }}>
+        <Box>
+          <Text size="xlarge" weight="bold">{incident.title}</Text>
+          <Box direction="row" align="center" gap="small" margin={{ top: 'xsmall' }}>
+            <Text size="small">Incident ID: {incident.id}</Text>
+            <Text size="small">•</Text>
+            <Box direction="row" align="center" gap="xsmall">
+              {getStatusIcon()}
+              <Text size="small" color={incident.status === 'in-progress' ? 'blue' : undefined}>
+                {incident.status.charAt(0).toUpperCase() + incident.status.slice(1)}
+              </Text>
+            </Box>
+          </Box>
+        </Box>
+        <Box direction="row" gap="small">
+          <Button label="Update Status" primary />
+          <Button label="Assign" secondary />
+        </Box>
+      </Box>
 
-            <div className="grid grid-cols-2 gap-8 mb-8">
-              <div>
-                <h2 className="text-lg font-medium mb-4">Location Details</h2>
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-sm text-gray-500">Data Hall</label>
-                    <p className="font-medium">{incident.datahall}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm text-gray-500">Rack Number</label>
-                    <div className="flex items-center gap-2">
-                      <Server className="w-5 h-5 text-gray-400" />
-                      <p className="font-medium">{incident.rack_number}</p>
-                    </div>
-                  </div>
-                  {incident.u_height && (
-                    <div>
-                      <label className="text-sm text-gray-500">U-Height</label>
-                      <p className="font-medium">{incident.u_height}</p>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              <div>
-                <h2 className="text-lg font-medium mb-4">Component Details</h2>
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-sm text-gray-500">Part Type</label>
-                    <div className="flex items-center gap-2">
-                      <Tool className="w-5 h-5 text-gray-400" />
-                      <p className="font-medium">{incident.part_type}</p>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="text-sm text-gray-500">Part Identifier</label>
-                    <p className="font-medium">{incident.part_identifier}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-6">
-              <div>
-                <h2 className="text-lg font-medium mb-4">Description</h2>
-                <p className="text-gray-700 whitespace-pre-wrap">{incident.description}</p>
-              </div>
-
-              {incident.comments && (
-                <div>
-                  <h2 className="text-lg font-medium mb-4">Additional Comments</h2>
-                  <p className="text-gray-700 whitespace-pre-wrap">{incident.comments}</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+      <Box direction="row" gap="medium" margin={{ bottom: 'medium' }}>
+        <Card flex width="70%">
+          <CardHeader pad="medium" background="light-2">
+            <Text weight="bold">Incident Details</Text>
+          </CardHeader>
+          <CardBody pad="medium">
+            <Box gap="medium">
+              <Box>
+                <Text size="small" color="dark-3">Description</Text>
+                <Text margin={{ top: 'xsmall' }}>{incident.description}</Text>
+              </Box>
+              
+              <Box>
+                <Text size="small" color="dark-3">Timeline</Text>
+                <Box margin={{ top: 'small' }} gap="small">
+                  <Box direction="row" align="center" gap="small">
+                    <Box background="light-3" pad="xsmall" round>
+                      <Calendar size={16} />
+                    </Box>
+                    <Box>
+                      <Text size="small">Created on {new Date(incident.createdAt).toLocaleString()}</Text>
+                      <Text size="xsmall" color="dark-4">by {incident.assignedTo}</Text>
+                    </Box>
+                  </Box>
+                  <Box direction="row" align="center" gap="small">
+                    <Box background="light-3" pad="xsmall" round>
+                      <Clock size={16} />
+                    </Box>
+                    <Box>
+                      <Text size="small">Updated on {new Date(incident.updatedAt).toLocaleString()}</Text>
+                      <Text size="xsmall" color="dark-4">Status changed to "In Progress"</Text>
+                    </Box>
+                  </Box>
+                </Box>
+              </Box>
+              
+              <Box>
+                <Text size="small" color="dark-3">Comments</Text>
+                <Box margin={{ top: 'small' }} gap="medium">
+                  <Box background="light-1" pad="small" round="small" border={{ color: 'light-3', size: '1px' }}>
+                    <Box direction="row" align="center" gap="small" margin={{ bottom: 'xsmall' }}>
+                      <User size={16} />
+                      <Text size="small" weight="bold">John Doe</Text>
+                      <Text size="xsmall" color="dark-4">Yesterday at 2:30 PM</Text>
+                    </Box>
+                    <Text size="small">I've checked the cooling system and found that the primary pump is showing signs of wear. We should schedule a replacement within the next week.</Text>
+                  </Box>
+                  
+                  <Box background="light-1" pad="small" round="small" border={{ color: 'light-3', size: '1px' }}>
+                    <Box direction="row" align="center" gap="small" margin={{ bottom: 'xsmall' }}>
+                      <User size={16} />
+                      <Text size="small" weight="bold">Jane Smith</Text>
+                      <Text size="xsmall" color="dark-4">Today at 9:15 AM</Text>
+                    </Box>
+                    <Text size="small">Replacement parts have been ordered. ETA is 2 business days.</Text>
+                  </Box>
+                  
+                  <Box direction="row" align="center" gap="small">
+                    <MessageSquare size={16} />
+                    <Text size="small">Add a comment...</Text>
+                  </Box>
+                </Box>
+              </Box>
+            </Box>
+          </CardBody>
+        </Card>
+        
+        <Card flex>
+          <CardHeader pad="medium" background="light-2">
+            <Text weight="bold">Incident Information</Text>
+          </CardHeader>
+          <CardBody pad="medium">
+            <Box gap="medium">
+              <Box>
+                <Text size="small" color="dark-3">Priority</Text>
+                <Box direction="row" align="center" gap="xsmall" margin={{ top: 'xsmall' }}>
+                  <Box 
+                    background={`${getPriorityColor()}-500`} 
+                    width="12px" 
+                    height="12px" 
+                    round="full" 
+                  />
+                  <Text>{incident.priority.charAt(0).toUpperCase() + incident.priority.slice(1)}</Text>
+                </Box>
+              </Box>
+              
+              <Box>
+                <Text size="small" color="dark-3">Severity</Text>
+                <Text margin={{ top: 'xsmall' }}>{incident.severity}</Text>
+              </Box>
+              
+              <Box>
+                <Text size="small" color="dark-3">Assigned To</Text>
+                <Box direction="row" align="center" gap="xsmall" margin={{ top: 'xsmall' }}>
+                  <User size={16} />
+                  <Text>{incident.assignedTo}</Text>
+                </Box>
+              </Box>
+              
+              <Box>
+                <Text size="small" color="dark-3">Related Items</Text>
+                <Box margin={{ top: 'xsmall' }} gap="xsmall">
+                  <Text size="small">• Cooling System #CS-001</Text>
+                  <Text size="small">• Data Hall A</Text>
+                  <Text size="small">• Maintenance Schedule #MS-2023-11</Text>
+                </Box>
+              </Box>
+            </Box>
+          </CardBody>
+        </Card>
+      </Box>
+    </Box>
   );
 };
 

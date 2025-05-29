@@ -4,6 +4,7 @@ export interface User {
   email: string;
   name: string;
   role?: string;
+  lastInspectionDate?: string;
 }
 
 export interface Inspection {
@@ -12,6 +13,7 @@ export interface Inspection {
   Timestamp: string;
   ReportData: InspectionData;
   id?: string; // For backwards compatibility
+  status?: string;
 }
 
 export interface InspectionData {
@@ -32,6 +34,7 @@ export interface Report {
   Timestamp: string;
   ReportData: InspectionData;
   id?: string; // For backwards compatibility
+  title?: string;
 }
 
 export interface RackMapping {
@@ -47,6 +50,7 @@ export interface Issue {
   description: string;
   status: IssueStatus;
   priority: 'low' | 'medium' | 'high' | 'critical';
+  severity?: string;
   createdAt: string;
   updatedAt: string;
   assignedTo?: string;

@@ -1,83 +1,42 @@
-import React from 'react';
-import { Card, CardBody, CardFooter, Box, Text, Button } from 'grommet';
-import { FormView, Alert } from 'grommet-icons';
-import { format } from 'date-fns';
+
+import { FileText, Calendar } from 'lucide-react';
+import { Report } from '../../types';
 
 interface ReportCardProps {
-  id: string;
-  datahall: string;
-  status: string;
-  issue: string;
-  timestamp: string;
+  report: Report;
   onClick: () => void;
 }
 
-export const ReportCard = ({
-  id,
-  datahall,
-  status,
-  issue,
-  timestamp,
-  onClick,
-}: ReportCardProps) => {
-  const getStatusColor = (status: string) => {
-    switch (status?.toLowerCase()) {
-      case 'operational':
-        return 'status-ok';
-      case 'maintenance':
-        return 'status-warning';
-      case 'alert':
-        return 'status-critical';
-      case 'offline':
-        return 'status-disabled';
-      default:
-        return 'status-unknown';
-    }
-  };
-
+const ReportCard = ({ report, onClick }: ReportCardProps) => {
   return (
-    <Card background="light-1" onClick={onClick} hoverIndicator>
-      <CardBody pad="medium">
-        <Box gap="small">
-          <Box direction="row" justify="between" align="center">
-            <Box direction="row" gap="small" align="center">
-              <Alert color="status-critical" size="small" />
-              <Text weight="bold">{datahall}</Text>
-              <Box
-                background={getStatusColor(status)}
-                pad={{ horizontal: 'small', vertical: 'xxsmall' }}
-                round="small"
-              >
-                <Text size="xsmall">{status}</Text>
-              </Box>
-            </Box>
-            <Text size="small" color="dark-5">
-              {format(new Date(timestamp), 'MMM d, yyyy')}
-            </Text>
-          </Box>
-          <Box>
-            <Text size="small" color="dark-3">
-              Issue:
-            </Text>
-            <Text size="small" truncate>
-              {issue}
-            </Text>
-          </Box>
-        </Box>
-      </CardBody>
-      <CardFooter pad={{ horizontal: 'medium', vertical: 'small' }} background="light-2">
-        <Text size="small" truncate>
-          ID: {id.substring(0, 8)}...
-        </Text>
-        <Button
-          icon={<FormView size="small" />}
-          hoverIndicator
-          onClick={(e) => {
-            e.stopPropagation();
-            onClick();
-          }}
-        />
-      </CardFooter>
-    </Card>
+    <div
+      onClick={onClick}
+      className="bg-white rounded-lg p-6 shadow-sm border border-gray-200 hover:shadow-md transition-shadow cursor-pointer"
+    >
+      <div className="flex items-start justify-between mb-4">
+        <div className="flex items-center space-x-3">
+          <FileText className="w-8 h-8 text-blue-500" />
+          <div>
+            <h3 className="text-lg font-semibold text-gray-900">
+              {report.title || `Report ${report.id?.slice(0, 8)}`}
+            </h3>
+            <p className="text-sm text-gray-500">
+              {report.ReportData.datahall}
+            </p>
+          </div>
+        </div>
+      </div>
+      
+      <div className="flex items-center text-sm text-gray-500 space-x-4">
+        <div className="flex items-center space-x-1">
+          <Calendar className="w-4 h-4" />
+          <span>{new Date(report.Timestamp).toLocaleDateString()}</span>
+        </div>
+        <span>•</span>
+        <span>{report.UserEmail}</span>
+      </div>
+    </div>
   );
 };
+
+export default ReportCard;

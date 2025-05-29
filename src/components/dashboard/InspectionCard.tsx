@@ -1,80 +1,53 @@
-import React from 'react';
-import { Card, CardBody, CardFooter, Box, Text, Button } from 'grommet';
-import { FormView } from 'grommet-icons';
-import { format } from 'date-fns';
+
+import { Clock, AlertTriangle, CheckCircle } from 'lucide-react';
+import { Inspection } from '../../types';
 
 interface InspectionCardProps {
-  id: string;
-  datahall: string;
-  status: string;
-  userEmail: string;
-  timestamp: string;
+  inspection: Inspection;
   onClick: () => void;
 }
 
-export const InspectionCard = ({
-  id,
-  datahall,
-  status,
-  userEmail,
-  timestamp,
-  onClick,
-}: InspectionCardProps) => {
-  const getStatusColor = (status: string) => {
-    switch (status?.toLowerCase()) {
-      case 'operational':
-        return 'status-ok';
-      case 'maintenance':
-        return 'status-warning';
-      case 'alert':
-        return 'status-critical';
-      case 'offline':
-        return 'status-disabled';
+const InspectionCard = ({ inspection, onClick }: InspectionCardProps) => {
+  const getStatusIcon = () => {
+    switch (inspection.status) {
+      case 'completed':
+        return <CheckCircle className="w-5 h-5 text-green-500" />;
+      case 'in-progress':
+        return <Clock className="w-5 h-5 text-blue-500" />;
       default:
-        return 'status-unknown';
+        return <AlertTriangle className="w-5 h-5 text-yellow-500" />;
     }
   };
 
   return (
-    <Card background="light-1" onClick={onClick} hoverIndicator>
-      <CardBody pad="medium">
-        <Box gap="small">
-          <Box direction="row" justify="between" align="center">
-            <Box direction="row" gap="small" align="center">
-              <Text weight="bold">{datahall}</Text>
-              <Box
-                background={getStatusColor(status)}
-                pad={{ horizontal: 'small', vertical: 'xxsmall' }}
-                round="small"
-              >
-                <Text size="xsmall">{status}</Text>
-              </Box>
-            </Box>
-            <Text size="small" color="dark-5">
-              {format(new Date(timestamp), 'MMM d, yyyy')}
-            </Text>
-          </Box>
-          <Box>
-            <Text size="small" color="dark-3">
-              Submitted by:
-            </Text>
-            <Text size="small">{userEmail}</Text>
-          </Box>
-        </Box>
-      </CardBody>
-      <CardFooter pad={{ horizontal: 'medium', vertical: 'small' }} background="light-2">
-        <Text size="small" truncate>
-          ID: {id.substring(0, 8)}...
-        </Text>
-        <Button
-          icon={<FormView size="small" />}
-          hoverIndicator
-          onClick={(e) => {
-            e.stopPropagation();
-            onClick();
-          }}
-        />
-      </CardFooter>
-    </Card>
+    <div
+      onClick={onClick}
+      className="bg-white rounded-lg p-6 shadow-sm border border-gray-200 hover:shadow-md transition-shadow cursor-pointer"
+    >
+      <div className="flex items-start justify-between mb-4">
+        <div>
+          <h3 className="text-lg font-semibold text-gray-900">
+            {inspection.ReportData.datahall}
+          </h3>
+          <p className="text-sm text-gray-500">
+            {new Date(inspection.Timestamp).toLocaleDateString()}
+          </p>
+        </div>
+        {getStatusIcon()}
+      </div>
+      
+      <div className="space-y-2">
+        <div className="flex justify-between text-sm">
+          <span className="text-gray-500">Status:</span>
+          <span className="capitalize">{inspection.status || 'pending'}</span>
+        </div>
+        <div className="flex justify-between text-sm">
+          <span className="text-gray-500">Inspector:</span>
+          <span>{inspection.UserEmail}</span>
+        </div>
+      </div>
+    </div>
   );
 };
+
+export default InspectionCard;
