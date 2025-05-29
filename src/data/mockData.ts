@@ -128,6 +128,18 @@ export const currentUser: User = {
 
 export const recentInspections: Inspection[] = [
   {
+    Id: '1',
+    UserEmail: currentUser.email,
+    Timestamp: '2025-05-05T10:00:00Z',
+    ReportData: {
+      datahall: 'island-1',
+      status: 'completed',
+      isUrgent: false,
+      temperatureReading: '22°C',
+      humidityReading: '45%',
+      securityPassed: true,
+      coolingSystemCheck: true,
+    },
     id: '1',
     status: 'completed',
     location: 'Canada - Quebec Q01, Island 01',
@@ -136,6 +148,18 @@ export const recentInspections: Inspection[] = [
     completedBy: currentUser.id,
   },
   {
+    Id: '2',
+    UserEmail: currentUser.email,
+    Timestamp: '2025-05-05T11:00:00Z',
+    ReportData: {
+      datahall: 'island-8',
+      status: 'in-progress',
+      isUrgent: true,
+      temperatureReading: '28°C',
+      humidityReading: '55%',
+      securityPassed: false,
+      coolingSystemCheck: false,
+    },
     id: '2',
     status: 'in-progress',
     location: 'Canada - Quebec Q01, Island 08',
@@ -143,6 +167,18 @@ export const recentInspections: Inspection[] = [
     issueCount: 5,
   },
   {
+    Id: '3',
+    UserEmail: currentUser.email,
+    Timestamp: '2025-05-04T09:00:00Z',
+    ReportData: {
+      datahall: 'island-9',
+      status: 'completed',
+      isUrgent: false,
+      temperatureReading: '21°C',
+      humidityReading: '42%',
+      securityPassed: true,
+      coolingSystemCheck: true,
+    },
     id: '3',
     status: 'completed',
     location: 'Canada - Quebec Q01, Island 09',
@@ -151,6 +187,18 @@ export const recentInspections: Inspection[] = [
     completedBy: currentUser.id,
   },
   {
+    Id: '4',
+    UserEmail: currentUser.email,
+    Timestamp: '2025-05-04T14:00:00Z',
+    ReportData: {
+      datahall: 'cirrus',
+      status: 'completed',
+      isUrgent: false,
+      temperatureReading: '23°C',
+      humidityReading: '48%',
+      securityPassed: true,
+      coolingSystemCheck: true,
+    },
     id: '4',
     status: 'completed',
     location: 'Canada - Quebec Q01, Cirrus',
@@ -163,8 +211,10 @@ export const recentInspections: Inspection[] = [
 export const issues: Issue[] = [
   {
     id: '1',
+    title: 'Cooling System Fault',
     description: 'Faulty cooling system in rack A3',
     status: 'resolved',
+    priority: 'high',
     severity: 'high',
     location: 'Canada - Quebec Q01, Island 01',
     createdAt: '2025-05-05T09:00:00Z',
@@ -173,8 +223,10 @@ export const issues: Issue[] = [
   },
   {
     id: '2',
+    title: 'PDU Power Fluctuations',
     description: 'PDU showing intermittent power fluctuations',
     status: 'in-progress',
+    priority: 'medium',
     severity: 'medium',
     location: 'Canada - Quebec Q01, Island 08',
     createdAt: '2025-05-05T11:00:00Z',
@@ -183,8 +235,10 @@ export const issues: Issue[] = [
   },
   {
     id: '3',
+    title: 'UPS Battery Replacement',
     description: 'UPS battery replacement needed',
     status: 'open',
+    priority: 'low',
     severity: 'low',
     location: 'Canada - Quebec Q01, Island 09',
     createdAt: '2025-05-05T08:00:00Z',
@@ -192,8 +246,10 @@ export const issues: Issue[] = [
   },
   {
     id: '4',
+    title: 'Network Switch Unresponsive',
     description: 'Network switch unresponsive',
     status: 'open',
+    priority: 'critical',
     severity: 'critical',
     location: 'Canada - Quebec Q01, Cirrus',
     createdAt: '2025-05-05T10:00:00Z',
@@ -201,8 +257,10 @@ export const issues: Issue[] = [
   },
   {
     id: '5',
+    title: 'Temperature Sensor Issue',
     description: 'Temperature sensors showing incorrect readings',
     status: 'in-progress',
+    priority: 'medium',
     severity: 'medium',
     location: 'Canada - Quebec Q01, Island 01',
     createdAt: '2025-05-04T13:15:00Z',
@@ -211,8 +269,10 @@ export const issues: Issue[] = [
   },
   {
     id: '6',
+    title: 'Fire Suppression System',
     description: 'Fire suppression system needs inspection',
     status: 'resolved',
+    priority: 'high',
     severity: 'high',
     location: 'Canada - Quebec Q01, Island 08',
     createdAt: '2025-05-04T11:20:00Z',
@@ -221,8 +281,10 @@ export const issues: Issue[] = [
   },
   {
     id: '7',
+    title: 'Water Leak Detection',
     description: 'Water leak detected near CRAC unit',
     status: 'resolved',
+    priority: 'critical',
     severity: 'critical',
     location: 'Canada - Quebec Q01, Island 01',
     createdAt: '2025-05-04T08:10:00Z',
@@ -233,6 +295,18 @@ export const issues: Issue[] = [
 
 export const reports: Report[] = [
   {
+    Id: '1',
+    UserEmail: currentUser.email,
+    Timestamp: '2025-05-05T18:00:00Z',
+    ReportData: {
+      datahall: 'island-1',
+      status: 'completed',
+      isUrgent: false,
+      temperatureReading: '22°C',
+      humidityReading: '45%',
+      securityPassed: true,
+      coolingSystemCheck: true,
+    },
     id: '1',
     title: 'Daily Issue Report - May 5th 2025',
     location: 'Canada - Quebec Q01, Island 01',
@@ -247,6 +321,18 @@ export const reports: Report[] = [
     recommendations: 'Schedule preventive maintenance for cooling systems and replace UPS batteries in the next maintenance window.'
   },
   {
+    Id: '2',
+    UserEmail: currentUser.email,
+    Timestamp: '2025-05-04T18:00:00Z',
+    ReportData: {
+      datahall: 'island-8',
+      status: 'completed',
+      isUrgent: false,
+      temperatureReading: '24°C',
+      humidityReading: '50%',
+      securityPassed: true,
+      coolingSystemCheck: true,
+    },
     id: '2',
     title: 'Daily Issue Report - May 4th 2025',
     location: 'Canada - Quebec Q01, Island 08',
@@ -260,6 +346,18 @@ export const reports: Report[] = [
     recommendations: 'Monitor PDU power fluctuations and consider replacement if issue persists beyond next maintenance cycle.'
   },
   {
+    Id: '3',
+    UserEmail: currentUser.email,
+    Timestamp: '2025-05-03T18:00:00Z',
+    ReportData: {
+      datahall: 'island-1',
+      status: 'completed',
+      isUrgent: false,
+      temperatureReading: '21°C',
+      humidityReading: '43%',
+      securityPassed: true,
+      coolingSystemCheck: true,
+    },
     id: '3',
     title: 'Daily Issue Report - May 3rd 2025',
     location: 'Canada - Quebec Q01',

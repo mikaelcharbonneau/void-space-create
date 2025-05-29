@@ -1,134 +1,61 @@
-import React from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
-import {
-  Box,
-  Button,
-  Heading,
-  Text,
-  Card,
-  CardBody,
-  CardFooter
-} from 'grommet';
-import { FormCheckmark, StatusCritical, FormView, FormPrevious } from 'grommet-icons';
-
-interface LocationState {
-  inspectionId?: string;
-  success: boolean;
-  error?: string;
-}
+import { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { Box, Heading, Text, Button } from 'grommet';
+import { CheckCircle, Home, FileText } from 'lucide-react';
 
 const Confirmation = () => {
-  const location = useLocation();
   const navigate = useNavigate();
-  const state = location.state as LocationState || { success: false };
+  const location = useLocation();
+  const [message, setMessage] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (location.state && location.state.message) {
+      setMessage(location.state.message);
+    }
+  }, [location.state]);
+
+  const handleGoHome = () => {
+    navigate('/');
+  };
+
+  const handleViewReports = () => {
+    navigate('/reports');
+  };
 
   return (
-    <Box pad="medium" align="center" justify="center" fill>
-      <Card 
-        width="large" 
-        background="light-1" 
-        pad="medium" 
-        margin={{ vertical: 'medium' }}
+    <Box fill align="center" justify="center" pad="medium">
+      <Box
+        width="medium"
+        pad="large"
+        background="white"
+        round="small"
+        elevation="small"
+        gap="medium"
       >
-        <CardBody pad="medium">
-          {state.success ? (
-            <Box align="center" gap="medium">
-              <Box
-                background="status-ok"
-                pad="medium"
-                round="full"
-                align="center"
-                justify="center"
-                width="xsmall"
-                height="xsmall"
-              >
-                <FormCheckmark size="large" color="white" />
-              </Box>
-              <Heading level={2} margin={{ bottom: 'none' }}>
-                Inspection Submitted Successfully
-              </Heading>
-              <Text textAlign="center">
-                Your inspection has been recorded and is available for review.
-              </Text>
-              {state.inspectionId && (
-                <Box 
-                  background="light-2" 
-                  pad="small" 
-                  round="small" 
-                  width="medium" 
-                  align="center"
-                >
-                  <Text size="small" weight="bold">Inspection ID:</Text>
-                  <Text>{state.inspectionId}</Text>
-                </Box>
-              )}
-            </Box>
-          ) : (
-            <Box align="center" gap="medium">
-              <Box
-                background="status-critical"
-                pad="medium"
-                round="full"
-                align="center"
-                justify="center"
-                width="xsmall"
-                height="xsmall"
-              >
-                <StatusCritical size="large" color="white" />
-              </Box>
-              <Heading level={2} margin={{ bottom: 'none' }}>
-                Submission Error
-              </Heading>
-              <Text textAlign="center">
-                There was a problem submitting your inspection. Please try again.
-              </Text>
-              {state.error && (
-                <Box 
-                  background="status-error" 
-                  pad="small" 
-                  round="small" 
-                  width="large" 
-                  align="center"
-                >
-                  <Text size="small" color="white">Error: {state.error}</Text>
-                </Box>
-              )}
-            </Box>
-          )}
-        </CardBody>
-        <CardFooter pad={{ horizontal: 'medium', vertical: 'small' }} gap="medium" justify="center">
-          {state.success ? (
-            <>
-              {state.inspectionId && (
-                <Button
-                  icon={<FormView />}
-                  label="View Report"
-                  onClick={() => navigate(`/reports/${state.inspectionId}`)}
-                  primary
-                />
-              )}
-              <Button
-                icon={<FormPrevious />}
-                label="Back to Dashboard"
-                onClick={() => navigate('/')}
-              />
-            </>
-          ) : (
-            <>
-              <Button
-                label="Try Again"
-                onClick={() => navigate('/inspection')}
-                primary
-              />
-              <Button
-                icon={<FormPrevious />}
-                label="Back to Dashboard"
-                onClick={() => navigate('/')}
-              />
-            </>
-          )}
-        </CardFooter>
-      </Card>
+        <Box align="center">
+          <CheckCircle size={64} color="green" />
+          <Heading level={3} margin={{ top: 'small', bottom: 'small' }}>
+            Success!
+          </Heading>
+          <Text size="medium">
+            {message || "Your action was completed successfully."}
+          </Text>
+        </Box>
+
+        <Box direction="row" gap="medium" justify="center">
+          <Button
+            icon={<Home size={20} />}
+            label="Go Home"
+            onClick={handleGoHome}
+            primary
+          />
+          <Button
+            icon={<FileText size={20} />}
+            label="View Reports"
+            onClick={handleViewReports}
+          />
+        </Box>
+      </Box>
     </Box>
   );
 };

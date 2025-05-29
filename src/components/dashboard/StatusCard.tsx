@@ -5,7 +5,7 @@ interface StatusCardProps {
   title: string;
   value: string | number;
   subtitle?: string;
-  trend?: 'up' | 'down';
+  trend?: 'up' | 'down' | string;
   color?: 'green' | 'red' | 'blue' | 'yellow';
 }
 
@@ -17,6 +17,15 @@ const StatusCard = ({ title, value, subtitle, trend, color = 'blue' }: StatusCar
     yellow: 'text-yellow-600 bg-yellow-50'
   };
 
+  const getTrendDirection = (trendValue?: string | 'up' | 'down') => {
+    if (!trendValue) return null;
+    if (trendValue === 'up' || trendValue.startsWith('+')) return 'up';
+    if (trendValue === 'down' || trendValue.startsWith('-')) return 'down';
+    return null;
+  };
+
+  const trendDirection = getTrendDirection(trend);
+
   return (
     <div className="bg-white rounded-lg p-6 shadow-sm border border-gray-200">
       <div className="flex items-center justify-between">
@@ -27,9 +36,9 @@ const StatusCard = ({ title, value, subtitle, trend, color = 'blue' }: StatusCar
             <p className="text-sm text-gray-500 mt-1">{subtitle}</p>
           )}
         </div>
-        {trend && (
+        {trendDirection && (
           <div className={`p-3 rounded-full ${colorClasses[color]}`}>
-            {trend === 'up' ? (
+            {trendDirection === 'up' ? (
               <TrendingUp className="w-6 h-6" />
             ) : (
               <TrendingDown className="w-6 h-6" />

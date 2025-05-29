@@ -1,6 +1,7 @@
 
 import { useState, useEffect } from 'react';
 import { Box, Grid, Heading } from 'grommet';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import StatusCard from '../components/dashboard/StatusCard';
 import InspectionCard from '../components/dashboard/InspectionCard';
@@ -9,6 +10,7 @@ import { Inspection, Report } from '../types';
 
 const Dashboard = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [recentInspections, setRecentInspections] = useState<Inspection[]>([]);
   const [recentReports, setRecentReports] = useState<Report[]>([]);
 
@@ -57,7 +59,7 @@ const Dashboard = () => {
     <Box pad="medium" gap="large">
       <Box>
         <Heading level={2} margin="none">
-          Welcome back, {user?.name || 'User'}!
+          Welcome back, {user?.email || 'User'}!
         </Heading>
       </Box>
 
@@ -69,19 +71,16 @@ const Dashboard = () => {
         <StatusCard
           title="Total Inspections"
           value="24"
-          status="normal"
           trend="+12%"
         />
         <StatusCard
           title="Pending Issues"
           value="3"
-          status="warning"
           trend="-8%"
         />
         <StatusCard
           title="Completed Today"
           value="8"
-          status="success"
           trend="+25%"
         />
       </Grid>
@@ -95,7 +94,11 @@ const Dashboard = () => {
           <Heading level={3}>Recent Inspections</Heading>
           <Box gap="small">
             {recentInspections.map((inspection) => (
-              <InspectionCard key={inspection.Id} inspection={inspection} />
+              <InspectionCard 
+                key={inspection.Id} 
+                inspection={inspection} 
+                onClick={() => navigate(`/inspections/${inspection.Id}`)}
+              />
             ))}
           </Box>
         </Box>
@@ -104,7 +107,11 @@ const Dashboard = () => {
           <Heading level={3}>Recent Reports</Heading>
           <Box gap="small">
             {recentReports.map((report) => (
-              <ReportCard key={report.Id} report={report} />
+              <ReportCard 
+                key={report.Id} 
+                report={report} 
+                onClick={() => navigate(`/reports/${report.Id}`)}
+              />
             ))}
           </Box>
         </Box>

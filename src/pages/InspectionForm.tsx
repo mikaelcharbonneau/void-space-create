@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Box } from 'grommet';
-import { useLocation, useNavigate } from 'react-router-dom';
 import { ChevronDown, Server, Trash2 } from 'lucide-react';
 import { datahallsByLocation } from '../utils/locationMapping';
 import { rackLocations } from '../utils/rackLocations';

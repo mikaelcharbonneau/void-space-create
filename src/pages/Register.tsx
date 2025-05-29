@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { Box, Button, Form, FormField, TextInput, Text, Heading } from 'grommet';
@@ -9,17 +10,17 @@ const Register = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = async (value: { email: string; password: string; name: string }) => {
+  const handleSubmit = async (event: { value: { email: string; password: string; name: string } }) => {
     try {
       setLoading(true);
       setError(null);
 
       const { error } = await supabase.auth.signUp({
-        email: value.email,
-        password: value.password,
+        email: event.value.email,
+        password: event.value.password,
         options: {
           data: {
-            name: value.name,
+            name: event.value.name,
           },
         },
       });
@@ -55,7 +56,7 @@ const Register = () => {
           Create Account
         </Heading>
         
-        <Form onSubmit={({ value }) => handleSubmit(value)}>
+        <Form onSubmit={handleSubmit}>
           <FormField name="name" label="Full Name">
             <TextInput
               name="name"
