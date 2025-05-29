@@ -20,18 +20,18 @@ interface RackForm {
     rearDoorHeatExchanger: boolean;
   };
   psuDetails?: {
-    status: string;
-    psuId: string;
-    uHeight: string;
+    status?: string;
+    psuId?: string;
+    uHeight?: string;
     comments?: string;
   };
   pduDetails?: {
-    status: string;
-    pduId: string;
+    status?: string;
+    pduId?: string;
     comments?: string;
   };
   rdhxDetails?: {
-    status: string;
+    status?: string;
     comments?: string;
   };
 }
@@ -166,22 +166,22 @@ const InspectionForm = () => {
           
           if (rack.devices.powerSupplyUnit && rack.psuDetails) {
             part_type = 'PSU';
-            part_identifier = rack.psuDetails.psuId;
-            description = `PSU Issue - Status: ${rack.psuDetails.status}, PSU ID: ${rack.psuDetails.psuId}, U-Height: ${rack.psuDetails.uHeight}`;
+            part_identifier = rack.psuDetails.psuId || '';
+            description = `PSU Issue - Status: ${rack.psuDetails.status || ''}, PSU ID: ${rack.psuDetails.psuId || ''}, U-Height: ${rack.psuDetails.uHeight || ''}`;
             if (rack.psuDetails.comments) {
               description += `, Comments: ${rack.psuDetails.comments}`;
             }
           } else if (rack.devices.powerDistributionUnit && rack.pduDetails) {
             part_type = 'PDU';
-            part_identifier = rack.pduDetails.pduId;
-            description = `PDU Issue - Status: ${rack.pduDetails.status}, PDU ID: ${rack.pduDetails.pduId}`;
+            part_identifier = rack.pduDetails.pduId || '';
+            description = `PDU Issue - Status: ${rack.pduDetails.status || ''}, PDU ID: ${rack.pduDetails.pduId || ''}`;
             if (rack.pduDetails.comments) {
               description += `, Comments: ${rack.pduDetails.comments}`;
             }
           } else if (rack.devices.rearDoorHeatExchanger && rack.rdhxDetails) {
             part_type = 'RDHX';
             part_identifier = 'RDHX-1';
-            description = `RDHX Issue - Status: ${rack.rdhxDetails.status}`;
+            description = `RDHX Issue - Status: ${rack.rdhxDetails.status || ''}`;
             if (rack.rdhxDetails.comments) {
               description += `, Comments: ${rack.rdhxDetails.comments}`;
             }

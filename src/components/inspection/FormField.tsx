@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { Upload, Barcode, MapPin } from 'lucide-react';
 import { FormField as FormFieldType } from '../../types';
@@ -57,7 +58,7 @@ const FormField = ({ field, value, onChange }: FormFieldProps) => {
             onBlur={() => setFocused(false)}
           >
             <option value="">{field.placeholder || 'Select an option'}</option>
-            {field.options?.map((option) => (
+            {field.options?.map((option: { value: string; label: string; }) => (
               <option key={option.value} value={option.value}>
                 {option.label}
               </option>

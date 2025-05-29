@@ -1,7 +1,9 @@
+
 export interface User {
   id: string;
   email: string;
   name: string;
+  role?: string;
 }
 
 export interface Inspection {
@@ -9,6 +11,7 @@ export interface Inspection {
   UserEmail: string;
   Timestamp: string;
   ReportData: InspectionData;
+  id?: string; // For backwards compatibility
 }
 
 export interface InspectionData {
@@ -28,8 +31,38 @@ export interface Report {
   UserEmail: string;
   Timestamp: string;
   ReportData: InspectionData;
+  id?: string; // For backwards compatibility
 }
 
 export interface RackMapping {
   [datahall: string]: string[];
+}
+
+export type IssueStatus = 'open' | 'in-progress' | 'resolved' | 'closed';
+export type InspectionStatus = 'pending' | 'in-progress' | 'completed' | 'cancelled';
+
+export interface Issue {
+  id: string;
+  title: string;
+  description: string;
+  status: IssueStatus;
+  priority: 'low' | 'medium' | 'high' | 'critical';
+  createdAt: string;
+  updatedAt: string;
+  assignedTo?: string;
+}
+
+export interface FormField {
+  id: string;
+  label: string;
+  type: 'text' | 'textarea' | 'select' | 'barcode' | 'file' | 'location';
+  required?: boolean;
+  placeholder?: string;
+  options?: { value: string; label: string; }[];
+}
+
+export interface FormSection {
+  id: string;
+  title: string;
+  fields: FormField[];
 }

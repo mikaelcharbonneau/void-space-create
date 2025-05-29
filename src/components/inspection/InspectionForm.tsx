@@ -1,6 +1,6 @@
+
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Box, Text } from 'grommet';
 import { ChevronDown, ChevronUp, Server } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { rackLocations } from '../../utils/rackLocations';
@@ -19,18 +19,18 @@ interface RackForm {
     rearDoorHeatExchanger: boolean;
   };
   psuDetails?: {
-    status: string;
-    psuId: string;
-    uHeight: string;
+    status?: string;
+    psuId?: string;
+    uHeight?: string;
     comments?: string;
   };
   pduDetails?: {
-    status: string;
-    pduId: string;
+    status?: string;
+    pduId?: string;
     comments?: string;
   };
   rdhxDetails?: {
-    status: string;
+    status?: string;
     comments?: string;
   };
 }
