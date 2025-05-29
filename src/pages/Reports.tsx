@@ -1,9 +1,9 @@
+
 import { useState, useEffect } from 'react';
 import { Box } from 'grommet';
 import { Download } from 'lucide-react';
 
 const Reports = () => {
-  const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {

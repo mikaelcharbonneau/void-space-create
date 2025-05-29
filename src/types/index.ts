@@ -14,6 +14,7 @@ export interface Inspection {
   ReportData: InspectionData;
   id?: string; // For backwards compatibility
   status?: string;
+  location?: string; // Add location property
 }
 
 export interface InspectionData {
@@ -35,6 +36,7 @@ export interface Report {
   ReportData: InspectionData;
   id?: string; // For backwards compatibility
   title?: string;
+  location?: string; // Add location property
 }
 
 export interface RackMapping {
@@ -54,6 +56,7 @@ export interface Issue {
   createdAt: string;
   updatedAt: string;
   assignedTo?: string;
+  location?: string; // Add location property
 }
 
 export interface FormField {

@@ -1,6 +1,7 @@
+
 import { useState, useEffect } from 'react';
 import { Box, Heading, Text, Button } from 'grommet';
-import { Add } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Issue } from '../types';
 
@@ -47,7 +48,7 @@ const Incidents = () => {
       <Box direction="row" justify="between" align="center">
         <Heading level={2}>Incidents</Heading>
         <Button
-          icon={<Add size={20} />}
+          icon={<Plus size={20} />}
           label="Add Incident"
           onClick={() => navigate('/incidents/new')}
         />
