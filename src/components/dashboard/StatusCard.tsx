@@ -1,56 +1,65 @@
-import React from 'react';
-import { Card, CardBody, Box, Text, Meter } from 'grommet';
+
+import { Card, CardBody, CardHeader, Text, Box } from 'grommet';
+import { StatusGood, StatusWarning, StatusCritical } from 'grommet-icons';
 
 interface StatusCardProps {
   title: string;
-  count: number;
-  status: 'ok' | 'warning' | 'critical' | 'disabled' | 'unknown';
+  value: number;
+  status: 'good' | 'warning' | 'critical';
+  subtitle?: string;
 }
 
-export const StatusCard = ({ title, count, status }: StatusCardProps) => {
-  const getStatusColor = (status: string) => {
+const StatusCard = ({ title, value, status, subtitle }: StatusCardProps) => {
+  const getStatusIcon = () => {
     switch (status) {
-      case 'ok':
+      case 'good':
+        return <StatusGood color="status-ok" size="large" />;
+      case 'warning':
+        return <StatusWarning color="status-warning" size="large" />;
+      case 'critical':
+        return <StatusCritical color="status-critical" size="large" />;
+      default:
+        return <StatusGood color="status-ok" size="large" />;
+    }
+  };
+
+  const getStatusColor = () => {
+    switch (status) {
+      case 'good':
         return 'status-ok';
       case 'warning':
         return 'status-warning';
       case 'critical':
         return 'status-critical';
-      case 'disabled':
-        return 'status-disabled';
       default:
-        return 'status-unknown';
+        return 'text';
     }
   };
 
   return (
-    <Card
-      background="light-1"
-      pad="medium"
-      gap="small"
-      width={{ min: '150px' }}
-    >
-      <Box direction="row" justify="between" align="center">
-        <Text size="small" color="dark-3">
-          {title}
-        </Text>
-        <Box
-          background={getStatusColor(status)}
-          pad={{ horizontal: 'xsmall', vertical: 'xxsmall' }}
-          round="small"
-        >
-          <Text size="xsmall" color="white">
-            {status.toUpperCase()}
+    <Card background="white" pad="medium" elevation="small" round="small">
+      <CardHeader>
+        <Box direction="row" align="center" justify="between">
+          <Text size="small" color="text-weak">
+            {title}
           </Text>
+          {getStatusIcon()}
         </Box>
-      </Box>
+      </CardHeader>
       <CardBody>
-        <Box align="center" justify="center" pad={{ vertical: 'small' }}>
-          <Text size="xlarge" weight="bold">
-            {count}
+        <Box gap="small">
+          <Text size="xlarge" weight="bold" color={getStatusColor()}>
+            {value}
           </Text>
+          {subtitle && (
+            <Text size="small" color="text-weak">
+              {subtitle}
+            </Text>
+          )}
         </Box>
       </CardBody>
     </Card>
   );
 };
+
+export default StatusCard;

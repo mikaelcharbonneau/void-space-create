@@ -1,114 +1,135 @@
+
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { Box, Button, Form, FormField, TextInput, Text, Heading } from 'grommet';
-import { supabase } from '../lib/supabaseClient';
-import { Mail, Lock, User } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { 
+  Box, 
+  Button, 
+  Form, 
+  FormField, 
+  TextInput, 
+  Heading, 
+  Text,
+  Card,
+  CardBody 
+} from 'grommet';
+import { useAuth } from '../context/AuthContext';
+import HPELogo from '../components/ui/HPELogo';
 
 const Register = () => {
   const navigate = useNavigate();
+  const { signUp } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [formData, setFormData] = useState({
+    email: '',
+    password: '',
+    name: ''
+  });
 
-  const handleSubmit = async (value: { email: string; password: string; name: string }) => {
+  const handleSubmit = async () => {
+    if (!formData.email || !formData.password || !formData.name) {
+      setError('All fields are required');
+      return;
+    }
+
     try {
       setLoading(true);
       setError(null);
-
-      const { error } = await supabase.auth.signUp({
-        email: value.email,
-        password: value.password,
-        options: {
-          data: {
-            name: value.name,
-          },
-        },
-      });
-
-      if (error) throw error;
-
-      navigate('/login', { 
-        state: { message: 'Registration successful! Please check your email to verify your account.' }
-      });
+      
+      await signUp(formData);
+      navigate('/');
     } catch (error: any) {
-      setError(error.message);
+      setError(error.message || 'Registration failed');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <Box
-      fill
-      align="center"
-      justify="center"
-      pad="medium"
+    <Box 
+      fill 
+      align="center" 
+      justify="center" 
       background="light-2"
+      pad="medium"
     >
-      <Box
-        width="medium"
-        pad="large"
-        background="white"
-        round="small"
-        elevation="small"
-      >
-        <Heading level={2} margin={{ top: 'none', bottom: 'medium' }} textAlign="center">
-          Create Account
-        </Heading>
-        
-        <Form onSubmit={({ value }) => handleSubmit(value)}>
-          <FormField name="name" label="Full Name">
-            <TextInput
-              name="name"
-              icon={<User size={20} />}
-              placeholder="Enter your full name"
-              required
-            />
-          </FormField>
-
-          <FormField name="email" label="Email">
-            <TextInput
-              name="email"
-              icon={<Mail size={20} />}
-              placeholder="Enter your email"
-              type="email"
-              required
-            />
-          </FormField>
-          
-          <FormField name="password" label="Password">
-            <TextInput
-              name="password"
-              icon={<Lock size={20} />}
-              placeholder="Create a password"
-              type="password"
-              required
-            />
-          </FormField>
+      <Card width="medium" background="white" elevation="medium">
+        <CardBody pad="large">
+          <Box align="center" gap="medium">
+            <HPELogo size="large" />
+            <Heading level={2} margin="none">
+              Create Account
+            </Heading>
+            <Text textAlign="center" color="text-weak">
+              Join the HPE Audit Portal
+            </Text>
+          </Box>
 
           {error && (
-            <Box margin={{ vertical: 'small' }} background="status-error" pad="small" round="small">
-              <Text size="small" color="white">{error}</Text>
+            <Box 
+              background="status-error" 
+              pad="small" 
+              round="small" 
+              margin={{ vertical: 'small' }}
+            >
+              <Text color="white" size="small">
+                {error}
+              </Text>
             </Box>
           )}
 
-          <Button
-            type="submit"
-            primary
-            label={loading ? 'Creating account...' : 'Create Account'}
-            disabled={loading}
-            margin={{ top: 'medium', bottom: 'small' }}
-          />
-        </Form>
+          <Form
+            onSubmit={handleSubmit}
+            value={formData}
+            onChange={setFormData}
+          >
+            <FormField 
+              name="name" 
+              label="Full Name" 
+              required
+              margin={{ bottom: 'small' }}
+            >
+              <TextInput name="name" />
+            </FormField>
 
-        <Box align="center" margin={{ top: 'medium' }}>
-          <Text size="small">
-            Already have an account?{' '}
-            <Link to="/login" className="text-brand-500 hover:underline">
-              Sign in
-            </Link>
-          </Text>
-        </Box>
-      </Box>
+            <FormField 
+              name="email" 
+              label="Email" 
+              required
+              margin={{ bottom: 'small' }}
+            >
+              <TextInput name="email" type="email" />
+            </FormField>
+
+            <FormField 
+              name="password" 
+              label="Password" 
+              required
+              margin={{ bottom: 'medium' }}
+            >
+              <TextInput name="password" type="password" />
+            </FormField>
+
+            <Button
+              type="submit"
+              label={loading ? 'Creating Account...' : 'Create Account'}
+              primary
+              fill
+              disabled={loading}
+              margin={{ bottom: 'medium' }}
+            />
+          </Form>
+
+          <Box align="center">
+            <Text size="small" color="text-weak">
+              Already have an account?{' '}
+              <Link to="/login" style={{ color: '#01A982', textDecoration: 'none' }}>
+                Sign in
+              </Link>
+            </Text>
+          </Box>
+        </CardBody>
+      </Card>
     </Box>
   );
 };

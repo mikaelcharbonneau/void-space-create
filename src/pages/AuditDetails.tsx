@@ -1,61 +1,39 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, AlertTriangle, CheckCircle, Clock, User, MapPin, Building, Download } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, Clock, MapPin, Server, PenTool as Tool } from 'lucide-react';
 import { format } from 'date-fns';
 import { supabase } from '../lib/supabaseClient';
 
-interface AuditReport {
-  Id: string;
-  GeneratedBy: string;
-  Timestamp: string;
-  datacenter: string;
+interface Incident {
+  id: string;
+  location: string;
   datahall: string;
-  issues_reported: number;
-  state: string;
+  rack_number: string;
+  part_type: string;
+  part_identifier: string;
+  u_height?: string;
+  severity: 'critical' | 'high' | 'medium' | 'low';
+  status: 'open' | 'in-progress' | 'resolved';
+  created_at: string;
+  updated_at: string;
+  description: string;
+  comments?: string;
+  user_id: string;
   walkthrough_id: number;
-  user_full_name: string;
-  ReportData: {
-    racks?: {
-      id: string;
-      location: string;
-      devices: {
-        powerSupplyUnit: boolean;
-        powerDistributionUnit: boolean;
-        rearDoorHeatExchanger: boolean;
-      };
-      psuDetails?: {
-        status: string;
-        psuId: string;
-        uHeight: string;
-        comments?: string;
-      };
-      pduDetails?: {
-        status: string;
-        pduId: string;
-        comments?: string;
-      };
-      rdhxDetails?: {
-        status: string;
-        comments?: string;
-      };
-    }[];
-    hasIssues: boolean;
-    comments?: string;
-  };
 }
 
 const AuditDetails = () => {
-  const { id } = useParams<{ id: string }>();
+  const { id } = useParams();
   const navigate = useNavigate();
-  const [audit, setAudit] = useState<AuditReport | null>(null);
+  const [auditReport, setAuditReport] = useState<any | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchAuditDetails();
+    fetchAuditReportDetails();
   }, [id]);
 
-  const fetchAuditDetails = async () => {
+  const fetchAuditReportDetails = async () => {
     try {
       setLoading(true);
       setError(null);
@@ -67,76 +45,24 @@ const AuditDetails = () => {
         .single();
 
       if (error) throw error;
-      setAudit(data);
+      setAuditReport(data);
     } catch (error: any) {
-      console.error('Error fetching audit details:', error);
+      console.error('Error fetching audit report details:', error);
       setError(error.message);
     } finally {
       setLoading(false);
     }
   };
 
-  const downloadCSV = () => {
-    if (!audit?.ReportData?.racks) return;
-
-    const headers = [
-      'Rack Location',
-      'Device Type',
-      'Status',
-      'Device ID',
-      'U-Height',
-      'Comments'
-    ];
-
-    const rows = audit.ReportData.racks.flatMap(rack => {
-      const rows = [];
-
-      if (rack.devices.powerSupplyUnit && rack.psuDetails) {
-        rows.push([
-          rack.location,
-          'Power Supply Unit',
-          rack.psuDetails.status,
-          rack.psuDetails.psuId,
-          rack.psuDetails.uHeight,
-          rack.psuDetails.comments || ''
-        ]);
-      }
-
-      if (rack.devices.powerDistributionUnit && rack.pduDetails) {
-        rows.push([
-          rack.location,
-          'Power Distribution Unit',
-          rack.pduDetails.status,
-          rack.pduDetails.pduId,
-          'N/A',
-          rack.pduDetails.comments || ''
-        ]);
-      }
-
-      if (rack.devices.rearDoorHeatExchanger && rack.rdhxDetails) {
-        rows.push([
-          rack.location,
-          'Rear Door Heat Exchanger',
-          rack.rdhxDetails.status,
-          'RDHX',
-          'N/A',
-          rack.rdhxDetails.comments || ''
-        ]);
-      }
-
-      return rows;
-    });
-
-    const csvContent = [
-      headers.join(','),
-      ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
-    ].join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `audit_${audit.walkthrough_id}_details.csv`;
-    link.click();
+  const getSeverityColor = (state: string) => {
+    switch (state) {
+      case 'Critical':
+        return 'bg-red-100 text-red-800';
+      case 'Warning':
+        return 'bg-orange-100 text-orange-800';
+      default:
+        return 'bg-green-100 text-green-800';
+    }
   };
 
   if (loading) {
@@ -147,20 +73,20 @@ const AuditDetails = () => {
     );
   }
 
-  if (error || !audit) {
+  if (error || !auditReport) {
     return (
       <div className="p-6">
         <div className="max-w-3xl mx-auto bg-white rounded-lg shadow-sm p-6">
           <h1 className="text-2xl font-semibold text-red-600 mb-4">Error</h1>
           <p className="text-gray-600 mb-4">
-            {error || 'Failed to load audit details'}
+            {error || 'Failed to load audit report details'}
           </p>
           <button
             onClick={() => navigate('/inspections')}
             className="flex items-center text-emerald-600 hover:text-emerald-700"
           >
             <ArrowLeft className="w-5 h-5 mr-2" />
-            Back to Audits
+            Back to Inspections
           </button>
         </div>
       </div>
@@ -175,174 +101,76 @@ const AuditDetails = () => {
           className="flex items-center text-gray-600 hover:text-gray-900 mb-6"
         >
           <ArrowLeft className="w-5 h-5 mr-2" />
-          Back to Audits
+          Back to Inspections
         </button>
 
-        {/* Header */}
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-          <div className="flex justify-between items-start mb-6">
-            <div>
-              <h1 className="text-2xl font-semibold mb-2">
-                Audit #{audit.walkthrough_id}
-              </h1>
-              <div className="flex items-center text-gray-600 mb-2">
-                <Clock className="w-4 h-4 mr-2" />
-                {format(new Date(audit.Timestamp), 'PPpp')}
+        <div className="bg-white rounded-lg shadow-sm overflow-hidden">
+          <div className="p-6">
+            <div className="flex justify-between items-start mb-6">
+              <div>
+                <div className="flex items-center gap-3 mb-2">
+                  <AlertTriangle className={`w-6 h-6 ${
+                    auditReport.state === 'Critical' ? 'text-red-500' :
+                    auditReport.state === 'Warning' ? 'text-orange-500' :
+                    'text-green-500'
+                  }`} />
+                  <h1 className="text-2xl font-semibold">Audit Report #{auditReport.walkthrough_id}</h1>
+                </div>
+                <div className="flex items-center text-gray-600 gap-4">
+                  <div className="flex items-center">
+                    <Clock className="w-4 h-4 mr-2" />
+                    {format(new Date(auditReport.Timestamp), 'PPpp')}
+                  </div>
+                  <div className="flex items-center">
+                    <MapPin className="w-4 h-4 mr-2" />
+                    {auditReport.datacenter}
+                  </div>
+                </div>
               </div>
-              <div className="flex items-center text-gray-600">
-                <User className="w-4 h-4 mr-2" />
-                {audit.user_full_name}
+              <div className="flex gap-2">
+                <span className={`px-3 py-1 rounded-full text-sm font-medium ${getSeverityColor(auditReport.state)}`}>
+                  {auditReport.state}
+                </span>
               </div>
             </div>
-            <div className="flex gap-4">
-              {audit.ReportData.racks && audit.ReportData.racks.length > 0 && (
-                <button
-                  onClick={downloadCSV}
-                  className="flex items-center gap-2 px-4 py-2 text-emerald-600 border border-emerald-200 rounded-lg hover:bg-emerald-50"
-                >
-                  <Download className="w-5 h-5" />
-                  Download CSV
-                </button>
-              )}
-              <span className={`px-3 py-1 rounded-full text-sm font-medium ${
-                audit.issues_reported === 0 
-                  ? 'bg-green-100 text-green-800'
-                  : audit.state === 'Critical'
-                    ? 'bg-red-100 text-red-800'
-                    : 'bg-yellow-100 text-yellow-800'
-              }`}>
-                {audit.issues_reported === 0 ? 'Healthy' : audit.state}
-              </span>
-            </div>
-          </div>
 
-          <div className="border-t border-gray-100 pt-6">
-            <div className="grid grid-cols-2 gap-6">
+            <div className="grid grid-cols-2 gap-8 mb-8">
               <div>
-                <div className="flex items-center mb-4">
-                  <Building className="w-5 h-5 text-gray-400 mr-2" />
+                <h2 className="text-lg font-medium mb-4">Location Details</h2>
+                <div className="space-y-4">
                   <div>
-                    <p className="text-sm text-gray-500">Datacenter</p>
-                    <p className="font-medium">{audit.datacenter}</p>
+                    <label className="text-sm text-gray-500">Data Hall</label>
+                    <p className="font-medium">{auditReport.datahall}</p>
                   </div>
-                </div>
-                <div className="flex items-center">
-                  <MapPin className="w-5 h-5 text-gray-400 mr-2" />
                   <div>
-                    <p className="text-sm text-gray-500">Data Hall</p>
-                    <p className="font-medium">{audit.datahall}</p>
+                    <label className="text-sm text-gray-500">Generated By</label>
+                    <p className="font-medium">{auditReport.user_full_name}</p>
                   </div>
                 </div>
               </div>
+
               <div>
-                <div className="flex items-center mb-4">
-                  <AlertTriangle className="w-5 h-5 text-gray-400 mr-2" />
+                <h2 className="text-lg font-medium mb-4">Report Details</h2>
+                <div className="space-y-4">
                   <div>
-                    <p className="text-sm text-gray-500">Issues Reported</p>
-                    <p className="font-medium">{audit.issues_reported}</p>
+                    <label className="text-sm text-gray-500">Issues Reported</label>
+                    <div className="flex items-center gap-2">
+                      <Tool className="w-5 h-5 text-gray-400" />
+                      <p className="font-medium">{auditReport.issues_reported}</p>
+                    </div>
                   </div>
                 </div>
-                <div className="flex items-center">
-                  <CheckCircle className="w-5 h-5 text-gray-400 mr-2" />
-                  <div>
-                    <p className="text-sm text-gray-500">Status</p>
-                    <p className="font-medium">{audit.ReportData.hasIssues ? 'Issues Found' : 'No Issues'}</p>
-                  </div>
-                </div>
+              </div>
+            </div>
+
+            <div className="space-y-6">
+              <div>
+                <h2 className="text-lg font-medium mb-4">Report Data</h2>
+                <p className="text-gray-700 whitespace-pre-wrap">{JSON.stringify(auditReport.ReportData)}</p>
               </div>
             </div>
           </div>
         </div>
-
-        {/* Issues Section */}
-        {audit.ReportData.hasIssues && audit.ReportData.racks && (
-          <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
-            <h2 className="text-xl font-semibold mb-6">Reported Issues</h2>
-            <div className="space-y-6">
-              {audit.ReportData.racks.map((rack) => (
-                <div key={rack.id} className="border border-gray-200 rounded-lg p-6">
-                  <h3 className="text-lg font-medium mb-4">
-                    Rack Location: {rack.location}
-                  </h3>
-
-                  {rack.devices.powerSupplyUnit && rack.psuDetails && (
-                    <div className="mb-6">
-                      <h4 className="font-medium text-gray-900 mb-2">Power Supply Unit Issue</h4>
-                      <div className="grid grid-cols-2 gap-4 text-sm">
-                        <div>
-                          <p className="text-gray-500">Status</p>
-                          <p className="font-medium">{rack.psuDetails.status}</p>
-                        </div>
-                        <div>
-                          <p className="text-gray-500">PSU ID</p>
-                          <p className="font-medium">{rack.psuDetails.psuId}</p>
-                        </div>
-                        <div>
-                          <p className="text-gray-500">U-Height</p>
-                          <p className="font-medium">{rack.psuDetails.uHeight}</p>
-                        </div>
-                        {rack.psuDetails.comments && (
-                          <div className="col-span-2">
-                            <p className="text-gray-500">Comments</p>
-                            <p className="font-medium">{rack.psuDetails.comments}</p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {rack.devices.powerDistributionUnit && rack.pduDetails && (
-                    <div className="mb-6">
-                      <h4 className="font-medium text-gray-900 mb-2">Power Distribution Unit Issue</h4>
-                      <div className="grid grid-cols-2 gap-4 text-sm">
-                        <div>
-                          <p className="text-gray-500">Status</p>
-                          <p className="font-medium">{rack.pduDetails.status}</p>
-                        </div>
-                        <div>
-                          <p className="text-gray-500">PDU ID</p>
-                          <p className="font-medium">{rack.pduDetails.pduId}</p>
-                        </div>
-                        {rack.pduDetails.comments && (
-                          <div className="col-span-2">
-                            <p className="text-gray-500">Comments</p>
-                            <p className="font-medium">{rack.pduDetails.comments}</p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
-                  {rack.devices.rearDoorHeatExchanger && rack.rdhxDetails && (
-                    <div>
-                      <h4 className="font-medium text-gray-900 mb-2">Rear Door Heat Exchanger Issue</h4>
-                      <div className="grid grid-cols-2 gap-4 text-sm">
-                        <div>
-                          <p className="text-gray-500">Status</p>
-                          <p className="font-medium">{rack.rdhxDetails.status}</p>
-                        </div>
-                        {rack.rdhxDetails.comments && (
-                          <div className="col-span-2">
-                            <p className="text-gray-500">Comments</p>
-                            <p className="font-medium">{rack.rdhxDetails.comments}</p>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Additional Comments */}
-        {audit.ReportData.comments && (
-          <div className="bg-white rounded-lg shadow-sm p-6">
-            <h2 className="text-xl font-semibold mb-4">Additional Comments</h2>
-            <p className="text-gray-600">{audit.ReportData.comments}</p>
-          </div>
-        )}
       </div>
     </div>
   );

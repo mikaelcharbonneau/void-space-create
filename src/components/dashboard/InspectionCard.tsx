@@ -1,80 +1,81 @@
-import React from 'react';
-import { Card, CardBody, CardFooter, Box, Text, Button } from 'grommet';
-import { FormView } from 'grommet-icons';
+
+import { Link } from 'react-router-dom';
+import { Card, CardBody, CardHeader, Text, Box } from 'grommet';
+import { FormView, StatusGood, StatusWarning, StatusCritical } from 'grommet-icons';
 import { format } from 'date-fns';
 
 interface InspectionCardProps {
-  id: string;
-  datahall: string;
-  status: string;
-  userEmail: string;
-  timestamp: string;
-  onClick: () => void;
+  inspection: {
+    id: string;
+    title: string;
+    status: 'Healthy' | 'Warning' | 'Critical';
+    date: string;
+    location: string;
+  };
 }
 
-export const InspectionCard = ({
-  id,
-  datahall,
-  status,
-  userEmail,
-  timestamp,
-  onClick,
-}: InspectionCardProps) => {
-  const getStatusColor = (status: string) => {
-    switch (status?.toLowerCase()) {
-      case 'operational':
-        return 'status-ok';
-      case 'maintenance':
-        return 'status-warning';
-      case 'alert':
-        return 'status-critical';
-      case 'offline':
-        return 'status-disabled';
+const InspectionCard = ({ inspection }: InspectionCardProps) => {
+  const getStatusIcon = () => {
+    switch (inspection.status) {
+      case 'Healthy':
+        return <StatusGood color="status-ok" />;
+      case 'Warning':
+        return <StatusWarning color="status-warning" />;
+      case 'Critical':
+        return <StatusCritical color="status-critical" />;
       default:
-        return 'status-unknown';
+        return <FormView />;
+    }
+  };
+
+  const getStatusColor = () => {
+    switch (inspection.status) {
+      case 'Healthy':
+        return 'status-ok';
+      case 'Warning':
+        return 'status-warning';
+      case 'Critical':
+        return 'status-critical';
+      default:
+        return 'text';
     }
   };
 
   return (
-    <Card background="light-1" onClick={onClick} hoverIndicator>
-      <CardBody pad="medium">
-        <Box gap="small">
-          <Box direction="row" justify="between" align="center">
-            <Box direction="row" gap="small" align="center">
-              <Text weight="bold">{datahall}</Text>
-              <Box
-                background={getStatusColor(status)}
-                pad={{ horizontal: 'small', vertical: 'xxsmall' }}
-                round="small"
-              >
-                <Text size="xsmall">{status}</Text>
-              </Box>
+    <Link to={`/inspections/${inspection.id}`} style={{ textDecoration: 'none' }}>
+      <Card 
+        background="white" 
+        pad="medium" 
+        elevation="small" 
+        round="small"
+        hoverIndicator
+      >
+        <CardHeader>
+          <Box direction="row" align="center" justify="between" fill>
+            <Box direction="row" align="center" gap="small">
+              {getStatusIcon()}
+              <Text weight="bold" truncate>
+                {inspection.title}
+              </Text>
             </Box>
-            <Text size="small" color="dark-5">
-              {format(new Date(timestamp), 'MMM d, yyyy')}
+            <Text size="small" color={getStatusColor()}>
+              {inspection.status}
             </Text>
           </Box>
-          <Box>
-            <Text size="small" color="dark-3">
-              Submitted by:
+        </CardHeader>
+        <CardBody>
+          <Box gap="small">
+            <Text size="small" color="text-weak">
+              {format(new Date(inspection.date), 'MMM dd, yyyy')}
             </Text>
-            <Text size="small">{userEmail}</Text>
+            <Text size="small" color="text-weak">
+              {inspection.location}
+            </Text>
           </Box>
-        </Box>
-      </CardBody>
-      <CardFooter pad={{ horizontal: 'medium', vertical: 'small' }} background="light-2">
-        <Text size="small" truncate>
-          ID: {id.substring(0, 8)}...
-        </Text>
-        <Button
-          icon={<FormView size="small" />}
-          hoverIndicator
-          onClick={(e) => {
-            e.stopPropagation();
-            onClick();
-          }}
-        />
-      </CardFooter>
-    </Card>
+        </CardBody>
+      </Card>
+    </Link>
   );
 };
+
+export default InspectionCard;

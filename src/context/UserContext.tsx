@@ -1,44 +1,45 @@
-import React, { createContext, useContext, ReactNode, useState, useEffect } from 'react';
+
+import { createContext, useContext, useEffect, useState } from 'react';
 import { User } from '../types';
 
 interface UserContextType {
   user: User | null;
+  setUser: (user: User | null) => void;
   loading: boolean;
 }
 
-const defaultContext: UserContextType = {
-  user: null,
-  loading: false
-};
+const UserContext = createContext<UserContextType | undefined>(undefined);
 
-const UserContext = createContext<UserContextType>(defaultContext);
-
-export const useUser = () => useContext(UserContext);
-
-interface UserProviderProps {
-  children: ReactNode;
-}
-
-export const UserProvider = ({ children }: UserProviderProps) => {
+export const UserProvider = ({ children }: { children: React.ReactNode }) => {
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
-  // Since we don't need authentication, we'll just create a default user
-  const defaultUser: User = {
-    id: '1',
-    email: '',
-    name: 'HPE Technician',
-  };
-
   useEffect(() => {
-    // Simulate loading the user
-    setTimeout(() => {
+    // Simulate loading user data
+    const timer = setTimeout(() => {
+      setUser({
+        id: '1',
+        email: 'user@example.com',
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      });
       setLoading(false);
-    }, 500);
+    }, 1000);
+
+    return () => clearTimeout(timer);
   }, []);
 
   return (
-    <UserContext.Provider value={{ user: defaultUser, loading }}>
+    <UserContext.Provider value={{ user, setUser, loading }}>
       {children}
     </UserContext.Provider>
   );
+};
+
+export const useUser = () => {
+  const context = useContext(UserContext);
+  if (context === undefined) {
+    throw new Error('useUser must be used within a UserProvider');
+  }
+  return context;
 };
