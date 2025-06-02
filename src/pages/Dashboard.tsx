@@ -1,62 +1,45 @@
 import { useState, useEffect } from 'react';
-import { Box, Heading, Grid, Text } from 'grommet';
-import { StatusGood, StatusWarning, StatusCritical } from 'grommet-icons';
+import { useNavigate } from 'react-router-dom';
+import { Box, Heading, Grid, Button } from 'grommet';
+import { Add, FormView, Document, Alert } from 'grommet-icons';
+import StatusCard from '../components/dashboard/StatusCard';
 import InspectionCard from '../components/dashboard/InspectionCard';
 import ReportCard from '../components/dashboard/ReportCard';
-import StatusCard from '../components/dashboard/StatusCard';
 import { supabase } from '../lib/supabaseClient';
 
 const Dashboard = () => {
-  const [stats, setStats] = useState({
+  const navigate = useNavigate();
+  const [stats] = useState({
     totalInspections: 0,
     activeIncidents: 0,
     reportsGenerated: 0,
     systemHealth: 95
   });
-  const [inspections, setInspections] = useState([
+
+  const [inspections] = useState([
     {
       id: '1',
-      title: 'Weekly Datacenter Check',
-      status: 'Healthy',
-      date: '2024-01-25',
-      location: 'New York'
-    },
-    {
-      id: '2',
-      title: 'Monthly Security Audit',
-      status: 'Warning',
+      title: 'Server Room A Inspection',
+      status: 'Healthy' as const,
       date: '2024-01-15',
-      location: 'San Francisco'
+      location: 'Building 1, Floor 2'
     },
     {
-      id: '3',
-      title: 'Emergency Power System Inspection',
-      status: 'Critical',
-      date: '2024-01-05',
-      location: 'London'
+      id: '2', 
+      title: 'Network Equipment Check',
+      status: 'Warning' as const,
+      date: '2024-01-14',
+      location: 'Building 1, Floor 3'
     }
   ]);
-  const [reports, setReports] = useState([
+
+  const [reports] = useState([
     {
       id: '1',
-      title: 'Q1 Performance Report',
+      title: 'Monthly Security Report',
       status: 'published',
-      date: '2024-01-28',
-      type: 'Performance'
-    },
-    {
-      id: '2',
-      title: 'Security Vulnerability Report',
-      status: 'draft',
-      date: '2024-01-20',
-      type: 'Security'
-    },
-    {
-      id: '3',
-      title: 'System Health Report',
-      status: 'error',
       date: '2024-01-10',
-      type: 'Health'
+      type: 'Security Audit'
     }
   ]);
 

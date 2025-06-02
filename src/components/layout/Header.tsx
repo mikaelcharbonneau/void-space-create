@@ -7,10 +7,10 @@ import HPELogo from '../ui/HPELogo';
 
 const Header = () => {
   const navigate = useNavigate();
-  const { signOut } = useAuth();
+  const { logout } = useAuth();
 
   const handleSignOut = async () => {
-    await signOut();
+    await logout();
     navigate('/login');
   };
 

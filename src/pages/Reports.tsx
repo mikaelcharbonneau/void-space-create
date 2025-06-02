@@ -2,10 +2,9 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Box, Heading, Button, Card, CardBody, Text, DataTable } from 'grommet';
-import { Add, Download, Eye } from 'grommet-icons';
+import { Add, Download, View } from 'grommet-icons';
 import { format } from 'date-fns';
 import { supabase } from '../lib/supabaseClient';
-import { useAuth } from '../context/AuthContext';
 
 interface Report {
   id: string;
@@ -23,7 +22,6 @@ interface Report {
 
 const Reports = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -107,7 +105,7 @@ const Reports = () => {
       render: (datum: Report) => (
         <Box direction="row" gap="small">
           <Button
-            icon={<Eye />}
+            icon={<View />}
             tip="View Report"
             onClick={() => navigate(`/reports/${datum.id}`)}
             size="small"

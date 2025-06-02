@@ -1,178 +1,168 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, AlertTriangle, Clock, MapPin, Server, PenTool as Tool } from 'lucide-react';
-import { format } from 'date-fns';
+import { Box, Heading, Card, CardBody, Text, Button, DataTable } from 'grommet';
+import { ArrowLeft } from 'grommet-icons';
 import { supabase } from '../lib/supabaseClient';
+import StatusChip from '../components/ui/StatusChip';
 
-interface Incident {
+interface AuditDetails {
   id: string;
-  location: string;
-  datahall: string;
-  rack_number: string;
-  part_type: string;
-  part_identifier: string;
-  u_height?: string;
-  severity: 'critical' | 'high' | 'medium' | 'low';
+  title: string;
+  description: string;
   status: 'open' | 'in-progress' | 'resolved';
   created_at: string;
   updated_at: string;
+  location: string;
+  findings: Finding[];
+}
+
+interface Finding {
+  id: string;
   description: string;
-  comments?: string;
-  user_id: string;
-  walkthrough_id: number;
+  severity: 'Healthy' | 'Warning' | 'Critical';
+  status: 'open' | 'in-progress' | 'resolved';
+  audit_id: string;
+  created_at: string;
 }
 
 const AuditDetails = () => {
-  const { id } = useParams();
+  const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [auditReport, setAuditReport] = useState<any | null>(null);
+  const [auditDetails, setAuditDetails] = useState<AuditDetails | null>(null);
+   const [findings, setFindings] = useState<Finding[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchAuditReportDetails();
+    const fetchAuditDetails = async () => {
+      if (!id) {
+        console.error("No audit ID provided");
+        return;
+      }
+
+      try {
+        setLoading(true);
+        // Fetch audit details
+        const { data: auditData, error: auditError } = await supabase
+          .from('audits')
+          .select('*')
+          .eq('id', id)
+          .single();
+
+        if (auditError) {
+          throw auditError;
+        }
+
+        if (auditData) {
+          setAuditDetails(auditData);
+        } else {
+          console.log(`Audit with id ${id} not found`);
+          setAuditDetails(null);
+        }
+
+         // Fetch findings related to the audit
+         const { data: findingsData, error: findingsError } = await supabase
+         .from('findings')
+         .select('*')
+         .eq('audit_id', id);
+
+       if (findingsError) {
+         throw findingsError;
+       }
+
+       if (findingsData) {
+         setFindings(findingsData);
+       } else {
+         console.log(`Findings for audit id ${id} not found`);
+         setFindings([]);
+       }
+      } catch (error) {
+        console.error("Error fetching audit details:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAuditDetails();
   }, [id]);
 
-  const fetchAuditReportDetails = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-
-      const { data, error } = await supabase
-        .from('AuditReports')
-        .select('*')
-        .eq('Id', id)
-        .single();
-
-      if (error) throw error;
-      setAuditReport(data);
-    } catch (error: any) {
-      console.error('Error fetching audit report details:', error);
-      setError(error.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const getSeverityColor = (state: string) => {
-    switch (state) {
-      case 'Critical':
-        return 'bg-red-100 text-red-800';
-      case 'Warning':
-        return 'bg-orange-100 text-orange-800';
-      default:
-        return 'bg-green-100 text-green-800';
-    }
-  };
+  const columns = [
+    {
+      property: 'description',
+      header: <Text weight="bold">Finding</Text>,
+      primary: true,
+    },
+    {
+      property: 'severity',
+      header: <Text weight="bold">Severity</Text>,
+      render: (datum: Finding) => <StatusChip status={datum.severity} size="small" />,
+    },
+    {
+      property: 'status',
+      header: <Text weight="bold">Status</Text>,
+       render: (datum: Finding) => <StatusChip status={datum.status} size="small" />,
+    },
+  ];
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500"></div>
-      </div>
-    );
+    return <Box>Loading...</Box>;
   }
 
-  if (error || !auditReport) {
+  if (!auditDetails) {
     return (
-      <div className="p-6">
-        <div className="max-w-3xl mx-auto bg-white rounded-lg shadow-sm p-6">
-          <h1 className="text-2xl font-semibold text-red-600 mb-4">Error</h1>
-          <p className="text-gray-600 mb-4">
-            {error || 'Failed to load audit report details'}
-          </p>
-          <button
-            onClick={() => navigate('/inspections')}
-            className="flex items-center text-emerald-600 hover:text-emerald-700"
-          >
-            <ArrowLeft className="w-5 h-5 mr-2" />
-            Back to Inspections
-          </button>
-        </div>
-      </div>
+      <Box>
+        <Text>Audit not found.</Text>
+      </Box>
     );
   }
 
   return (
-    <div className="p-6">
-      <div className="max-w-4xl mx-auto">
-        <button
-          onClick={() => navigate('/inspections')}
-          className="flex items-center text-gray-600 hover:text-gray-900 mb-6"
-        >
-          <ArrowLeft className="w-5 h-5 mr-2" />
-          Back to Inspections
-        </button>
+    <Box pad="medium" gap="small">
+      <Button
+        icon={<ArrowLeft />}
+        label="Back to Audits"
+        onClick={() => navigate('/inspections')}
+        alignSelf="start"
+      />
+      <Heading level={2}>{auditDetails.title}</Heading>
+      <Card background="white" elevation="small">
+        <CardBody pad="medium">
+          <Box gap="small">
+            <Text weight="bold">Description:</Text>
+            <Text>{auditDetails.description}</Text>
+          </Box>
+          <Box gap="small">
+            <Text weight="bold">Location:</Text>
+            <Text>{auditDetails.location}</Text>
+          </Box>
+          <Box gap="small">
+            <Text weight="bold">Status:</Text>
+            <StatusChip status={auditDetails.status} />
+          </Box>
+          <Box gap="small">
+            <Text weight="bold">Created At:</Text>
+            <Text>{new Date(auditDetails.created_at).toLocaleDateString()}</Text>
+          </Box>
+          <Box gap="small">
+            <Text weight="bold">Updated At:</Text>
+            <Text>{new Date(auditDetails.updated_at).toLocaleDateString()}</Text>
+          </Box>
+        </CardBody>
+      </Card>
 
-        <div className="bg-white rounded-lg shadow-sm overflow-hidden">
-          <div className="p-6">
-            <div className="flex justify-between items-start mb-6">
-              <div>
-                <div className="flex items-center gap-3 mb-2">
-                  <AlertTriangle className={`w-6 h-6 ${
-                    auditReport.state === 'Critical' ? 'text-red-500' :
-                    auditReport.state === 'Warning' ? 'text-orange-500' :
-                    'text-green-500'
-                  }`} />
-                  <h1 className="text-2xl font-semibold">Audit Report #{auditReport.walkthrough_id}</h1>
-                </div>
-                <div className="flex items-center text-gray-600 gap-4">
-                  <div className="flex items-center">
-                    <Clock className="w-4 h-4 mr-2" />
-                    {format(new Date(auditReport.Timestamp), 'PPpp')}
-                  </div>
-                  <div className="flex items-center">
-                    <MapPin className="w-4 h-4 mr-2" />
-                    {auditReport.datacenter}
-                  </div>
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <span className={`px-3 py-1 rounded-full text-sm font-medium ${getSeverityColor(auditReport.state)}`}>
-                  {auditReport.state}
-                </span>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-8 mb-8">
-              <div>
-                <h2 className="text-lg font-medium mb-4">Location Details</h2>
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-sm text-gray-500">Data Hall</label>
-                    <p className="font-medium">{auditReport.datahall}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm text-gray-500">Generated By</label>
-                    <p className="font-medium">{auditReport.user_full_name}</p>
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <h2 className="text-lg font-medium mb-4">Report Details</h2>
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-sm text-gray-500">Issues Reported</label>
-                    <div className="flex items-center gap-2">
-                      <Tool className="w-5 h-5 text-gray-400" />
-                      <p className="font-medium">{auditReport.issues_reported}</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="space-y-6">
-              <div>
-                <h2 className="text-lg font-medium mb-4">Report Data</h2>
-                <p className="text-gray-700 whitespace-pre-wrap">{JSON.stringify(auditReport.ReportData)}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+      <Heading level={3}>Findings</Heading>
+       {findings.length > 0 ? (
+        <Card background="white" elevation="small">
+        <CardBody pad="medium">
+          <DataTable
+            columns={columns}
+            data={findings}
+          />
+           </CardBody>
+        </Card>
+         ) : (
+          <Text>No findings reported.</Text>
+        )}
+    </Box>
   );
 };
 

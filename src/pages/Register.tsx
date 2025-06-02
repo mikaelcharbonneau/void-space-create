@@ -36,7 +36,7 @@ const Register = () => {
       setLoading(true);
       setError(null);
       
-      await signUp(formData);
+      await signUp(formData.email, formData.password);
       navigate('/');
     } catch (error: any) {
       setError(error.message || 'Registration failed');
@@ -56,7 +56,7 @@ const Register = () => {
       <Card width="medium" background="white" elevation="medium">
         <CardBody pad="large">
           <Box align="center" gap="medium">
-            <HPELogo size="large" />
+            <HPELogo />
             <Heading level={2} margin="none">
               Create Account
             </Heading>

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Box, Heading, Button, Card, CardBody, Text, DataTable } from 'grommet';
+import { Box, Heading, Button, Card, CardBody, DataTable, Text } from 'grommet';
 import { Add } from 'grommet-icons';
 import { format } from 'date-fns';
 import { supabase } from '../lib/supabaseClient';

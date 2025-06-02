@@ -1,66 +1,94 @@
-import React, { useState } from 'react';
-import { Box, Heading } from 'grommet';
-import { useLocation, useNavigate } from 'react-router-dom';
-import { ChevronDown } from 'lucide-react';
-import { datahallsByLocation } from '../utils/locationMapping';
-
-interface LocationState {
-  selectedLocation?: string;
-}
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Box, Heading, Text, Button, Card, CardBody } from 'grommet';
+import { FormView, Document, CheckMark } from 'grommet-icons';
 
 const InspectionFlow = () => {
-  const location = useLocation();
   const navigate = useNavigate();
-  const { selectedLocation } = (location.state as LocationState) || {};
-  const [showDatahallDropdown, setShowDatahallDropdown] = useState(false);
+  const [step, setStep] = useState(1);
 
-  if (!selectedLocation) {
-    navigate('/');
-    return null;
-  }
+  const handleNext = () => {
+    setStep(step + 1);
+  };
 
-  const datahalls = datahallsByLocation[selectedLocation] || [];
+  const handleBack = () => {
+    setStep(step - 1);
+  };
 
-  const handleDatahallSelect = (datahall: string) => {
-    navigate('/inspection/form', { 
-      state: { 
-        selectedLocation,
-        selectedDataHall: datahall 
-      } 
-    });
+  const handleComplete = () => {
+    navigate('/confirmation');
   };
 
   return (
-    <Box pad="medium">
-      <Heading level={2} margin={{ top: 'none', bottom: 'medium' }}>
-        Select Data Hall
-      </Heading>
-      <div className="max-w-md">
-        <p className="text-gray-600 mb-4">Location: {selectedLocation}</p>
-        <div className="relative">
-          <button
-            onClick={() => setShowDatahallDropdown(!showDatahallDropdown)}
-            className="w-full bg-white border border-gray-300 px-4 py-2 rounded-lg flex items-center justify-between hover:border-emerald-500 transition-colors"
-          >
-            <span className="text-gray-700">Select Data Hall</span>
-            <ChevronDown className={`w-4 h-4 text-gray-500 transition-transform ${showDatahallDropdown ? 'rotate-180' : ''}`} />
-          </button>
-          
-          {showDatahallDropdown && (
-            <div className="absolute left-0 right-0 mt-2 bg-white rounded-lg shadow-lg py-1 z-50">
-              {datahalls.map((datahall) => (
-                <button
-                  key={datahall}
-                  onClick={() => handleDatahallSelect(datahall)}
-                  className="w-full text-left px-4 py-2 text-gray-700 hover:bg-emerald-50 hover:text-emerald-600"
-                >
-                  {datahall}
-                </button>
-              ))}
-            </div>
+    <Box fill align="center" justify="center" pad="large">
+      <Card width="large" background="white" elevation="medium">
+        <CardBody pad="medium">
+          <Box align="center" gap="medium" margin={{ bottom: 'medium' }}>
+            <Heading level={2} margin="none">
+              Inspection Flow
+            </Heading>
+            <Text size="small" color="text-weak">
+              Follow the steps to complete the inspection.
+            </Text>
+          </Box>
+
+          {step === 1 && (
+            <Box gap="small">
+              <Heading level={3}>Step 1: Review Checklist</Heading>
+              <Text>
+                Review the inspection checklist to ensure all items are covered.
+              </Text>
+              <Button
+                label="View Checklist"
+                icon={<FormView />}
+                onClick={handleNext}
+                alignSelf="start"
+              />
+            </Box>
           )}
-        </div>
-      </div>
+
+          {step === 2 && (
+            <Box gap="small">
+              <Heading level={3}>Step 2: Fill Out Form</Heading>
+              <Text>
+                Fill out the inspection form with the necessary details.
+              </Text>
+              <Button
+                label="Fill Out Form"
+                icon={<Document />}
+                onClick={handleNext}
+                alignSelf="start"
+              />
+            </Box>
+          )}
+
+          {step === 3 && (
+            <Box gap="small">
+              <Heading level={3}>Step 3: Confirm and Submit</Heading>
+              <Text>
+                Confirm the information and submit the inspection.
+              </Text>
+              <Button
+                label="Complete Inspection"
+                icon={<CheckMark />}
+                onClick={handleComplete}
+                primary
+                alignSelf="start"
+              />
+            </Box>
+          )}
+        </CardBody>
+        <Box direction="row" justify="between" align="center" pad="medium" border={{ side: 'top', size: 'small', color: 'border' }}>
+          <Button
+            label="Back"
+            onClick={handleBack}
+            disabled={step === 1}
+          />
+          <Text size="small" color="text-weak">
+            Step {step} of 3
+          </Text>
+        </Box>
+      </Card>
     </Box>
   );
 };
