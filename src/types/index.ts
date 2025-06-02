@@ -77,14 +77,25 @@ export type IssueStatus = Incident['status'];
 export type InspectionStatus = AuditReport['state'];
 export type InspectionData = AuditReport;
 
+// Rack location mapping
+export interface RackMapping {
+  [key: string]: string[];
+}
+
 // Form types
+export interface FormFieldOption {
+  value: string;
+  label: string;
+}
+
 export interface FormField {
   id: string;
   label: string;
-  type: 'text' | 'select' | 'textarea' | 'checkbox';
-  options?: string[];
+  type: 'text' | 'select' | 'textarea' | 'checkbox' | 'barcode' | 'file' | 'location';
+  options?: FormFieldOption[];
   required?: boolean;
   value?: string;
+  placeholder?: string;
 }
 
 export interface FormSection {

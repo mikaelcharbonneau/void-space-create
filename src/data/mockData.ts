@@ -11,7 +11,7 @@ export const mockUser: User = {
 export const mockUserProfile: UserProfile = {
   user_id: '1',
   full_name: 'John Doe',
-  avatar_url: null,
+  avatar_url: undefined,
   phone: '+1-555-0123',
   department: 'Data Center Operations',
   updated_at: '2024-01-01T00:00:00Z'
@@ -172,15 +172,25 @@ export const mockFormSections: FormSection[] = [
         id: 'location',
         label: 'Location',
         type: 'select',
-        options: ['Houston DC', 'Austin DC', 'Dallas DC'],
-        required: true
+        options: [
+          { value: 'Houston DC', label: 'Houston DC' },
+          { value: 'Austin DC', label: 'Austin DC' },
+          { value: 'Dallas DC', label: 'Dallas DC' }
+        ],
+        required: true,
+        placeholder: 'Select location'
       },
       {
         id: 'datahall', 
         label: 'Data Hall',
         type: 'select',
-        options: ['DH-A', 'DH-B', 'DH-C'],
-        required: true
+        options: [
+          { value: 'DH-A', label: 'DH-A' },
+          { value: 'DH-B', label: 'DH-B' },
+          { value: 'DH-C', label: 'DH-C' }
+        ],
+        required: true,
+        placeholder: 'Select data hall'
       }
     ]
   },
@@ -192,20 +202,28 @@ export const mockFormSections: FormSection[] = [
         id: 'rack-number',
         label: 'Rack Number',
         type: 'text',
-        required: true
+        required: true,
+        placeholder: 'Enter rack number'
       },
       {
         id: 'issue-type',
         label: 'Issue Type',
         type: 'select', 
-        options: ['PSU', 'PDU', 'RDHX', 'Other'],
-        required: true
+        options: [
+          { value: 'PSU', label: 'PSU' },
+          { value: 'PDU', label: 'PDU' },
+          { value: 'RDHX', label: 'RDHX' },
+          { value: 'Other', label: 'Other' }
+        ],
+        required: true,
+        placeholder: 'Select issue type'
       },
       {
         id: 'description',
         label: 'Description',
         type: 'textarea',
-        required: true
+        required: true,
+        placeholder: 'Describe the issue'
       }
     ]
   }

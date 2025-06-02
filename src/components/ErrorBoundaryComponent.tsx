@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
+
+import { useEffect, useState } from 'react';
 import { Box, Heading, Text, Button } from 'grommet';
 
 const ErrorBoundaryComponent = () => {
-  const [error, setError] = useState(null);
   const [hasAttemptedLoad, setHasAttemptedLoad] = useState(false);
 
   useEffect(() => {

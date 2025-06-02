@@ -1,4 +1,4 @@
-import React from 'react';
+
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { Grommet } from 'grommet';
 import { hpe } from 'grommet-theme-hpe';
@@ -49,7 +49,7 @@ const App = () => {
                     <Route path="reports/:id" element={<Reports />} />
                     <Route path="profile" element={<Profile />} />
                     <Route path="not-found" element={<NotFound />} />
-                    <Route path="*" element={<Navigate to="/not-found\" replace />} />
+                    <Route path="*" element={<Navigate to="/not-found" replace />} />
                   </Route>
                 </Route>
               </Routes>
