@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+
+import { useState, useEffect } from 'react';
 import { Box } from 'grommet';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { ChevronDown, Server, Trash2 } from 'lucide-react';
@@ -161,24 +162,24 @@ const InspectionForm = () => {
       if (hasIssues && racks.length > 0) {
         const incidentPromises = racks.map(async (rack) => {
           let description = '';
-          let part_type = 'Other'; // Default value
+          let part_type = 'Other';
           let part_identifier = '';
           
-          if (rack.devices.powerSupplyUnit && rack.psuDetails) {
+          if (rack.devices.powerSupplyUnit && rack.psuDetails?.status && rack.psuDetails?.psuId && rack.psuDetails?.uHeight) {
             part_type = 'PSU';
             part_identifier = rack.psuDetails.psuId;
             description = `PSU Issue - Status: ${rack.psuDetails.status}, PSU ID: ${rack.psuDetails.psuId}, U-Height: ${rack.psuDetails.uHeight}`;
             if (rack.psuDetails.comments) {
               description += `, Comments: ${rack.psuDetails.comments}`;
             }
-          } else if (rack.devices.powerDistributionUnit && rack.pduDetails) {
+          } else if (rack.devices.powerDistributionUnit && rack.pduDetails?.status && rack.pduDetails?.pduId) {
             part_type = 'PDU';
             part_identifier = rack.pduDetails.pduId;
             description = `PDU Issue - Status: ${rack.pduDetails.status}, PDU ID: ${rack.pduDetails.pduId}`;
             if (rack.pduDetails.comments) {
               description += `, Comments: ${rack.pduDetails.comments}`;
             }
-          } else if (rack.devices.rearDoorHeatExchanger && rack.rdhxDetails) {
+          } else if (rack.devices.rearDoorHeatExchanger && rack.rdhxDetails?.status) {
             part_type = 'RDHX';
             part_identifier = 'RDHX-1';
             description = `RDHX Issue - Status: ${rack.rdhxDetails.status}`;
@@ -212,7 +213,7 @@ const InspectionForm = () => {
       const { data, error: reportError } = await supabase
         .from('AuditReports')
         .insert([{
-          GeneratedBy: user?.email,
+          GeneratedBy: user?.email || '',
           datacenter: selectedLocation,
           datahall: selectedDataHall,
           issues_reported: hasIssues ? racks.length : 0,
@@ -431,7 +432,12 @@ const InspectionForm = () => {
                                   <select
                                     value={rack.psuDetails?.status || ''}
                                     onChange={(e) => updateRack(rack.id, {
-                                      psuDetails: { ...rack.psuDetails, status: e.target.value }
+                                      psuDetails: { 
+                                        status: e.target.value,
+                                        psuId: rack.psuDetails?.psuId || '',
+                                        uHeight: rack.psuDetails?.uHeight || '',
+                                        comments: rack.psuDetails?.comments 
+                                      }
                                     })}
                                     className="w-full px-4 py-2.5 border border-gray-300 rounded-md focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                                   >
@@ -449,7 +455,12 @@ const InspectionForm = () => {
                                   <select
                                     value={rack.psuDetails?.psuId || ''}
                                     onChange={(e) => updateRack(rack.id, {
-                                      psuDetails: { ...rack.psuDetails, psuId: e.target.value }
+                                      psuDetails: { 
+                                        status: rack.psuDetails?.status || '',
+                                        psuId: e.target.value,
+                                        uHeight: rack.psuDetails?.uHeight || '',
+                                        comments: rack.psuDetails?.comments 
+                                      }
                                     })}
                                     className="w-full px-4 py-2.5 border border-gray-300 rounded-md focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                                   >
@@ -467,7 +478,12 @@ const InspectionForm = () => {
                                   <select
                                     value={rack.psuDetails?.uHeight || ''}
                                     onChange={(e) => updateRack(rack.id, {
-                                      psuDetails: { ...rack.psuDetails, uHeight: e.target.value }
+                                      psuDetails: { 
+                                        status: rack.psuDetails?.status || '',
+                                        psuId: rack.psuDetails?.psuId || '',
+                                        uHeight: e.target.value,
+                                        comments: rack.psuDetails?.comments 
+                                      }
                                     })}
                                     className="w-full px-4 py-2.5 border border-gray-300 rounded-md focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                                   >
@@ -485,7 +501,12 @@ const InspectionForm = () => {
                                   <textarea
                                     value={rack.psuDetails?.comments || ''}
                                     onChange={(e) => updateRack(rack.id, {
-                                      psuDetails: { ...rack.psuDetails, comments: e.target.value }
+                                      psuDetails: { 
+                                        status: rack.psuDetails?.status || '',
+                                        psuId: rack.psuDetails?.psuId || '',
+                                        uHeight: rack.psuDetails?.uHeight || '',
+                                        comments: e.target.value 
+                                      }
                                     })}
                                     className="w-full px-4 py-2.5 border border-gray-300 rounded-md focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 min-h-[100px]"
                                     placeholder="Add any additional comments"
@@ -506,7 +527,11 @@ const InspectionForm = () => {
                                   <select
                                     value={rack.pduDetails?.status || ''}
                                     onChange={(e) => updateRack(rack.id, {
-                                      pduDetails: { ...rack.pduDetails, status: e.target.value }
+                                      pduDetails: { 
+                                        status: e.target.value,
+                                        pduId: rack.pduDetails?.pduId || '',
+                                        comments: rack.pduDetails?.comments 
+                                      }
                                     })}
                                     className="w-full px-4 py-2.5 border border-gray-300 rounded-md focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                                   >
@@ -524,7 +549,11 @@ const InspectionForm = () => {
                                   <select
                                     value={rack.pduDetails?.pduId || ''}
                                     onChange={(e) => updateRack(rack.id, {
-                                      pduDetails: { ...rack.pduDetails, pduId: e.target.value }
+                                      pduDetails: { 
+                                        status: rack.pduDetails?.status || '',
+                                        pduId: e.target.value,
+                                        comments: rack.pduDetails?.comments 
+                                      }
                                     })}
                                     className="w-full px-4 py-2.5 border border-gray-300 rounded-md focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                                   >
@@ -542,7 +571,11 @@ const InspectionForm = () => {
                                   <textarea
                                     value={rack.pduDetails?.comments || ''}
                                     onChange={(e) => updateRack(rack.id, {
-                                      pduDetails: { ...rack.pduDetails, comments: e.target.value }
+                                      pduDetails: { 
+                                        status: rack.pduDetails?.status || '',
+                                        pduId: rack.pduDetails?.pduId || '',
+                                        comments: e.target.value 
+                                      }
                                     })}
                                     className="w-full px-4 py-2.5 border border-gray-300 rounded-md focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 min-h-[100px]"
                                     placeholder="Add any additional comments"
@@ -563,7 +596,10 @@ const InspectionForm = () => {
                                   <select
                                     value={rack.rdhxDetails?.status || ''}
                                     onChange={(e) => updateRack(rack.id, {
-                                      rdhxDetails: { ...rack.rdhxDetails, status: e.target.value }
+                                      rdhxDetails: { 
+                                        status: e.target.value,
+                                        comments: rack.rdhxDetails?.comments 
+                                      }
                                     })}
                                     className="w-full px-4 py-2.5 border border-gray-300 rounded-md focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                                   >
@@ -581,7 +617,10 @@ const InspectionForm = () => {
                                   <textarea
                                     value={rack.rdhxDetails?.comments || ''}
                                     onChange={(e) => updateRack(rack.id, {
-                                      rdhxDetails: { ...rack.rdhxDetails, comments: e.target.value }
+                                      rdhxDetails: { 
+                                        status: rack.rdhxDetails?.status || '',
+                                        comments: e.target.value 
+                                      }
                                     })}
                                     className="w-full px-4 py-2.5 border border-gray-300 rounded-md focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 min-h-[100px]"
                                     placeholder="Add any additional comments"

@@ -1,35 +1,94 @@
+
+// Database types from Supabase
 export interface User {
   id: string;
   email: string;
-  name: string;
+  created_at: string;
+  updated_at: string;
 }
 
-export interface Inspection {
+export interface UserProfile {
+  user_id: string;
+  full_name: string;
+  avatar_url?: string;
+  phone?: string;
+  department: string;
+  updated_at: string;
+}
+
+export interface UserStats {
+  user_id: string;
+  walkthroughs_completed: number;
+  issues_resolved: number;
+  reports_generated: number;
+  updated_at: string;
+}
+
+export interface AuditReport {
   Id: string;
-  UserEmail: string;
+  GeneratedBy: string;
   Timestamp: string;
-  ReportData: InspectionData;
+  datacenter: string;
+  datahall: string;
+  issues_reported: number;
+  state: 'Healthy' | 'Warning' | 'Critical';
+  walkthrough_id: number;
+  user_full_name: string;
+  ReportData: any;
 }
 
-export interface InspectionData {
+export interface Incident {
+  id: string;
+  location: string;
   datahall: string;
-  status: string;
-  isUrgent: boolean;
-  temperatureReading: string;
-  humidityReading: string;
+  rack_number: string;
+  part_type: string;
+  part_identifier: string;
+  u_height?: string;
+  description: string;
   comments?: string;
-  securityPassed: boolean;
-  coolingSystemCheck: boolean;
-  [key: string]: any;
+  severity: 'critical' | 'high' | 'medium' | 'low';
+  status: 'open' | 'in-progress' | 'resolved';
+  created_at: string;
+  updated_at: string;
+  user_id?: string;
 }
 
 export interface Report {
-  Id: string;
-  UserEmail: string;
-  Timestamp: string;
-  ReportData: InspectionData;
+  id: string;
+  title: string;
+  generated_by: string;
+  generated_at: string;
+  date_range_start: string;
+  date_range_end: string;
+  datacenter?: string;
+  datahall?: string;
+  status: string;
+  total_incidents: number;
+  report_data: any;
 }
 
-export interface RackMapping {
-  [datahall: string]: string[];
+// Legacy types for backwards compatibility
+export interface Inspection extends AuditReport {}
+
+export interface Issue extends Incident {}
+
+export type IssueStatus = Incident['status'];
+export type InspectionStatus = AuditReport['state'];
+export type InspectionData = AuditReport;
+
+// Form types
+export interface FormField {
+  id: string;
+  label: string;
+  type: 'text' | 'select' | 'textarea' | 'checkbox';
+  options?: string[];
+  required?: boolean;
+  value?: string;
+}
+
+export interface FormSection {
+  id: string;
+  title: string;
+  fields: FormField[];
 }

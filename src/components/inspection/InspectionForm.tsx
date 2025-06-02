@@ -1,6 +1,6 @@
+
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Box, Text } from 'grommet';
 import { ChevronDown, ChevronUp, Server } from 'lucide-react';
 import { supabase } from '../../lib/supabaseClient';
 import { rackLocations } from '../../utils/rackLocations';
@@ -83,7 +83,13 @@ export const InspectionForm = ({ selectedLocation, selectedDataHall }: Inspectio
       const { data, error } = await supabase
         .from('AuditReports')
         .insert([{
-          UserEmail: 'user@example.com',
+          GeneratedBy: 'user@example.com',
+          datacenter: selectedLocation,
+          datahall: selectedDataHall,
+          issues_reported: hasIssues ? racks.length : 0,
+          state: hasIssues ? 'Warning' : 'Healthy',
+          walkthrough_id: 1,
+          user_full_name: 'User',
           ReportData: {
             location: selectedLocation,
             datahall: selectedDataHall,
@@ -228,7 +234,12 @@ export const InspectionForm = ({ selectedLocation, selectedDataHall }: Inspectio
                             <select
                               value={rack.psuDetails?.status || ''}
                               onChange={(e) => updateRack(rack.id, {
-                                psuDetails: { ...rack.psuDetails, status: e.target.value }
+                                psuDetails: { 
+                                  status: e.target.value,
+                                  psuId: rack.psuDetails?.psuId || '',
+                                  uHeight: rack.psuDetails?.uHeight || '',
+                                  comments: rack.psuDetails?.comments 
+                                }
                               })}
                               className="w-full px-4 py-2.5 border border-gray-300 rounded-md focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                             >
@@ -246,7 +257,12 @@ export const InspectionForm = ({ selectedLocation, selectedDataHall }: Inspectio
                             <select
                               value={rack.psuDetails?.psuId || ''}
                               onChange={(e) => updateRack(rack.id, {
-                                psuDetails: { ...rack.psuDetails, psuId: e.target.value }
+                                psuDetails: { 
+                                  status: rack.psuDetails?.status || '',
+                                  psuId: e.target.value,
+                                  uHeight: rack.psuDetails?.uHeight || '',
+                                  comments: rack.psuDetails?.comments 
+                                }
                               })}
                               className="w-full px-4 py-2.5 border border-gray-300 rounded-md focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                             >
@@ -264,7 +280,12 @@ export const InspectionForm = ({ selectedLocation, selectedDataHall }: Inspectio
                             <select
                               value={rack.psuDetails?.uHeight || ''}
                               onChange={(e) => updateRack(rack.id, {
-                                psuDetails: { ...rack.psuDetails, uHeight: e.target.value }
+                                psuDetails: { 
+                                  status: rack.psuDetails?.status || '',
+                                  psuId: rack.psuDetails?.psuId || '',
+                                  uHeight: e.target.value,
+                                  comments: rack.psuDetails?.comments 
+                                }
                               })}
                               className="w-full px-4 py-2.5 border border-gray-300 rounded-md focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                             >
@@ -282,7 +303,12 @@ export const InspectionForm = ({ selectedLocation, selectedDataHall }: Inspectio
                             <textarea
                               value={rack.psuDetails?.comments || ''}
                               onChange={(e) => updateRack(rack.id, {
-                                psuDetails: { ...rack.psuDetails, comments: e.target.value }
+                                psuDetails: { 
+                                  status: rack.psuDetails?.status || '',
+                                  psuId: rack.psuDetails?.psuId || '',
+                                  uHeight: rack.psuDetails?.uHeight || '',
+                                  comments: e.target.value 
+                                }
                               })}
                               className="w-full px-4 py-2.5 border border-gray-300 rounded-md focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500 min-h-[100px] resize-none"
                               placeholder="Add any additional comments"

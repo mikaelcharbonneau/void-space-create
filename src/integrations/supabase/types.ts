@@ -9,7 +9,189 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      AuditReports: {
+        Row: {
+          datacenter: string
+          datahall: string
+          GeneratedBy: string
+          Id: string
+          issues_reported: number
+          ReportData: Json | null
+          state: string
+          Timestamp: string
+          user_full_name: string
+          walkthrough_id: number
+        }
+        Insert: {
+          datacenter: string
+          datahall: string
+          GeneratedBy: string
+          Id?: string
+          issues_reported?: number
+          ReportData?: Json | null
+          state?: string
+          Timestamp?: string
+          user_full_name: string
+          walkthrough_id: number
+        }
+        Update: {
+          datacenter?: string
+          datahall?: string
+          GeneratedBy?: string
+          Id?: string
+          issues_reported?: number
+          ReportData?: Json | null
+          state?: string
+          Timestamp?: string
+          user_full_name?: string
+          walkthrough_id?: number
+        }
+        Relationships: []
+      }
+      incidents: {
+        Row: {
+          comments: string | null
+          created_at: string
+          datahall: string
+          description: string
+          id: string
+          location: string
+          part_identifier: string
+          part_type: string
+          rack_number: string
+          severity: Database["public"]["Enums"]["incident_severity"]
+          status: Database["public"]["Enums"]["incident_status"]
+          u_height: string | null
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          comments?: string | null
+          created_at?: string
+          datahall: string
+          description?: string
+          id?: string
+          location: string
+          part_identifier: string
+          part_type: string
+          rack_number: string
+          severity: Database["public"]["Enums"]["incident_severity"]
+          status?: Database["public"]["Enums"]["incident_status"]
+          u_height?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          comments?: string | null
+          created_at?: string
+          datahall?: string
+          description?: string
+          id?: string
+          location?: string
+          part_identifier?: string
+          part_type?: string
+          rack_number?: string
+          severity?: Database["public"]["Enums"]["incident_severity"]
+          status?: Database["public"]["Enums"]["incident_status"]
+          u_height?: string | null
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      reports: {
+        Row: {
+          datacenter: string | null
+          datahall: string | null
+          date_range_end: string
+          date_range_start: string
+          generated_at: string
+          generated_by: string
+          id: string
+          report_data: Json
+          status: string
+          title: string
+          total_incidents: number
+        }
+        Insert: {
+          datacenter?: string | null
+          datahall?: string | null
+          date_range_end: string
+          date_range_start: string
+          generated_at?: string
+          generated_by: string
+          id?: string
+          report_data?: Json
+          status?: string
+          title: string
+          total_incidents?: number
+        }
+        Update: {
+          datacenter?: string | null
+          datahall?: string | null
+          date_range_end?: string
+          date_range_start?: string
+          generated_at?: string
+          generated_by?: string
+          id?: string
+          report_data?: Json
+          status?: string
+          title?: string
+          total_incidents?: number
+        }
+        Relationships: []
+      }
+      user_profiles: {
+        Row: {
+          avatar_url: string | null
+          department: string
+          full_name: string
+          phone: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          department?: string
+          full_name: string
+          phone?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          department?: string
+          full_name?: string
+          phone?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_stats: {
+        Row: {
+          issues_resolved: number
+          reports_generated: number
+          updated_at: string
+          user_id: string
+          walkthroughs_completed: number
+        }
+        Insert: {
+          issues_resolved?: number
+          reports_generated?: number
+          updated_at?: string
+          user_id: string
+          walkthroughs_completed?: number
+        }
+        Update: {
+          issues_resolved?: number
+          reports_generated?: number
+          updated_at?: string
+          user_id?: string
+          walkthroughs_completed?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -18,7 +200,8 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      incident_severity: "critical" | "high" | "medium" | "low"
+      incident_status: "open" | "in-progress" | "resolved"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -133,6 +316,9 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      incident_severity: ["critical", "high", "medium", "low"],
+      incident_status: ["open", "in-progress", "resolved"],
+    },
   },
 } as const
