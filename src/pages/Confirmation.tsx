@@ -1,6 +1,7 @@
+
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Box, Heading, Text, Button, Card, CardBody } from 'grommet';
-import { CheckMark } from 'grommet-icons';
+import { Checkmark } from 'grommet-icons';
 
 const Confirmation = () => {
   const location = useLocation();
@@ -12,7 +13,7 @@ const Confirmation = () => {
       <Card width="medium" background="white" elevation="medium">
         <CardBody align="center" pad="large">
           <Box align="center" gap="small">
-            <CheckMark size="large" color="green" />
+            <Checkmark size="large" color="green" />
             <Heading level={2} margin="none">
               Confirmation
             </Heading>

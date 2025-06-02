@@ -1,3 +1,4 @@
+
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { supabase } from '../lib/supabaseClient';
@@ -7,6 +8,7 @@ type AuthContextType = {
   isAuthenticated: boolean;
   user: User | null;
   login: (email: string, password: string) => Promise<boolean>;
+  signUp: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
   loading: boolean;
 };
@@ -73,6 +75,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const signUp = async (email: string, password: string): Promise<void> => {
+    try {
+      setLoading(true);
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+      });
+
+      if (error) {
+        throw error;
+      }
+    } catch (error) {
+      console.error('Error during signup:', error);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const logout = async () => {
     try {
       await supabase.auth.signOut();
@@ -83,7 +104,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, user, login, logout, loading }}>
+    <AuthContext.Provider value={{ isAuthenticated, user, login, signUp, logout, loading }}>
       {children}
     </AuthContext.Provider>
   );

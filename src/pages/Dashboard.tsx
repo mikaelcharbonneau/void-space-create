@@ -1,14 +1,11 @@
+
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Box, Heading, Grid, Button } from 'grommet';
-import { Add, FormView, Document, Alert } from 'grommet-icons';
+import { Box, Heading, Grid } from 'grommet';
 import StatusCard from '../components/dashboard/StatusCard';
 import InspectionCard from '../components/dashboard/InspectionCard';
 import ReportCard from '../components/dashboard/ReportCard';
-import { supabase } from '../lib/supabaseClient';
 
 const Dashboard = () => {
-  const navigate = useNavigate();
   const [stats] = useState({
     totalInspections: 0,
     activeIncidents: 0,

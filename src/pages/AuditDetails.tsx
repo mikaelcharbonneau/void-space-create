@@ -1,7 +1,8 @@
+
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Box, Heading, Card, CardBody, Text, Button, DataTable } from 'grommet';
-import { ArrowLeft } from 'grommet-icons';
+import { Previous } from 'grommet-icons';
 import { supabase } from '../lib/supabaseClient';
 import StatusChip from '../components/ui/StatusChip';
 
@@ -29,7 +30,7 @@ const AuditDetails = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [auditDetails, setAuditDetails] = useState<AuditDetails | null>(null);
-   const [findings, setFindings] = useState<Finding[]>([]);
+  const [findings, setFindings] = useState<Finding[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -118,7 +119,7 @@ const AuditDetails = () => {
   return (
     <Box pad="medium" gap="small">
       <Button
-        icon={<ArrowLeft />}
+        icon={<Previous />}
         label="Back to Audits"
         onClick={() => navigate('/inspections')}
         alignSelf="start"

@@ -1,19 +1,33 @@
+
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Box, Heading, Card, CardBody, Text, Button } from 'grommet';
-import { ArrowLeft } from 'grommet-icons';
+import { Previous } from 'grommet-icons';
+
+interface IncidentType {
+  id: string;
+  title: string;
+  description: string;
+  status: string;
+  priority: string;
+  reportedBy: string;
+  dateReported: string;
+  affectedSystems: string[];
+  stepsToResolve: string;
+  assignedTo: string;
+}
 
 const IncidentDetails = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const [incident, setIncident] = useState(null);
+  const [incident, setIncident] = useState<IncidentType | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error] = useState(null);
 
   useEffect(() => {
     // Mock API call
-    const mockIncident = {
-      id: id,
+    const mockIncident: IncidentType = {
+      id: id || '',
       title: 'Critical Server Overload',
       description: 'Server CPU usage exceeds 95% causing performance degradation.',
       status: 'open',
@@ -46,7 +60,7 @@ const IncidentDetails = () => {
   return (
     <Box pad="medium">
       <Box direction="row" gap="medium" align="center" margin={{ bottom: 'medium' }}>
-        <Button icon={<ArrowLeft />} label="Back to Incidents" onClick={() => navigate('/incidents')} />
+        <Button icon={<Previous />} label="Back to Incidents" onClick={() => navigate('/incidents')} />
       </Box>
 
       <Card>

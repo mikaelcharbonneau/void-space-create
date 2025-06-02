@@ -1,7 +1,8 @@
+
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Box, Heading, Text, Button, Card, CardBody } from 'grommet';
-import { FormView, Document, CheckMark } from 'grommet-icons';
+import { FormView, Document, Checkmark } from 'grommet-icons';
 
 const InspectionFlow = () => {
   const navigate = useNavigate();
@@ -70,7 +71,7 @@ const InspectionFlow = () => {
               </Text>
               <Button
                 label="Complete Inspection"
-                icon={<CheckMark />}
+                icon={<Checkmark />}
                 onClick={handleComplete}
                 primary
                 alignSelf="start"

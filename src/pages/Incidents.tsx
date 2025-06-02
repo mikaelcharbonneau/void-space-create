@@ -1,16 +1,15 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Box, Heading, Button, Card, CardBody, DataTable, Text } from 'grommet';
 import { Add } from 'grommet-icons';
 import { format } from 'date-fns';
 import { supabase } from '../lib/supabaseClient';
-import { useAuth } from '../context/AuthContext';
 import StatusChip from '../components/ui/StatusChip';
 import { Incident } from '../types';
 
 const Incidents = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
