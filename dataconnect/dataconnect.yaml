@@ -1,0 +1,12 @@
+specVersion: "v1"
+serviceId: "void-space-create"
+location: "us-east1"
+schema:
+  source: "./schema"
+  datasource:
+    postgresql:
+      database: "fdcdb"
+      cloudSql:
+        instanceId: "void-space-create-fdc"
+      # schemaValidation: "COMPATIBLE"
+connectorDirs: ["./connector"]
